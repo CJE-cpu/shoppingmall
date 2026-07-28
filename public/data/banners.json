@@ -1,0 +1,5 @@
+[
+  { "id": 1, "image": "/img/banner/auto-hero.png", "eyebrow": "DRIVE BETTER", "title": "당신의 드라이브를 업그레이드하세요", "description": "세차부터 안전용품까지, 자동차 생활에 필요한 모든 것을 만나보세요." },
+  { "id": 2, "image": "/img/banner/auto-care.png", "eyebrow": "CAR CARE WEEK", "title": "내 차를 위한 프리미엄 케어", "description": "검증된 세차·관리용품을 이번 주 특별한 가격으로 준비했습니다." },
+  { "id": 3, "image": "/img/banner/auto-performance.png", "eyebrow": "SAFE DRIVE", "title": "안전한 주행을 위한 필수 아이템", "description": "블랙박스부터 비상용품까지 미리 준비하고 안심 운전하세요." }
+]

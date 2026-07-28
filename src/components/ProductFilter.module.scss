@@ -1,0 +1,72 @@
+.filter {
+  position: sticky;
+  top: 20px;
+  padding: 20px;
+  border: 1px solid #ebe5df;
+  border-radius: 18px;
+  background: #fff;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #eee9e5;
+}
+.heading h2 {
+  margin: 0;
+  color: #2b2521;
+  font-size: 19px;
+  font-weight: 800;
+}
+.heading button {
+  border: 0;
+  background: none;
+  color: #a09790;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.filter fieldset {
+  display: grid;
+  gap: 11px;
+  margin: 15px 0;
+  padding: 21px 0;
+  border: 0;
+  border-bottom: 1px solid #eee9e5;
+}
+.filter fieldset:last-child {
+  padding-bottom: 4px;
+  border: 0;
+}
+.filter legend {
+  margin-bottom: 13px;
+  color: #433c37;
+  font-size: 14px;
+  font-weight: 800;
+}
+.filter label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #746c66;
+  font-size: 13px;
+  cursor: pointer;
+}
+.filter input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #ee5a41;
+}
+@media (max-width: 800px) {
+  .filter {
+    position: static;
+  }
+  .filter fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .filter legend {
+    grid-column: 1 / -1;
+  }
+}

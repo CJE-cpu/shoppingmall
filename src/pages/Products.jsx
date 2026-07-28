@@ -1,0 +1,93 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import ProductFilter from '../components/ProductFilter'
+import ProductList from '../components/ProductList'
+import ProductSort from '../components/ProductSort'
+import { useCategories } from '../hooks/useProducts'
+import styles from './Products.module.scss'
+
+const Products = () => {
+  const { category } = useParams()
+  const { categories } = useCategories()
+  const [products, setProducts] = useState([])
+  const [brands, setBrands] = useState([])
+  const [priceRange, setPriceRange] = useState('all')
+  const [sort, setSort] = useState('recommended')
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      const response = await fetch('/data/products.json')
+      const productData = await response.json()
+      setProducts(productData)
+    }
+
+    loadProducts()
+  }, [])
+
+  useEffect(() => {
+    setBrands([])
+    setPriceRange('all')
+    setSort('recommended')
+  }, [category])
+
+  const currentCategory = categories.find((item) => item.path.endsWith(`/${category}`))
+  const pageTitle = currentCategory?.name ?? '전체상품'
+  const brandOptions = [...new Set(products.map((item) => item.brand).filter(Boolean))]
+  const hasRatings = products.some((item) => typeof item.rating === 'number')
+
+  const filteredProducts = useMemo(() => {
+    let result = category
+      ? products.filter((item) => item.categoryValue === category)
+      : products
+
+    if (brands.length) {
+      result = result.filter((item) => brands.includes(item.brand))
+    }
+
+    if (priceRange === 'under100') result = result.filter((item) => item.price < 100000)
+    if (priceRange === '100to300') result = result.filter((item) => item.price >= 100000 && item.price <= 300000)
+    if (priceRange === 'over300') result = result.filter((item) => item.price > 300000)
+
+    return [...result].sort((a, b) => {
+      if (sort === 'low') return a.price - b.price
+      if (sort === 'high') return b.price - a.price
+      if (sort === 'rating') return (b.rating ?? 0) - (a.rating ?? 0)
+      return (b.reviews ?? 0) - (a.reviews ?? 0)
+    })
+  }, [brands, category, priceRange, products, sort])
+
+  const resetFilters = () => {
+    setBrands([])
+    setPriceRange('all')
+  }
+
+  return (
+    <main className={styles.page}>
+      <header className={styles.hero}>
+        <p className={styles.eyebrow}>PRODUCTS</p>
+        <h1>{pageTitle}</h1>
+        <p>차량에 꼭 맞는 상품을 한눈에 살펴보세요.</p>
+      </header>
+
+      <div className={styles.content}>
+        <aside className={styles.sidebar}>
+          <ProductFilter
+            brands={brands}
+            brandOptions={brandOptions}
+            priceRange={priceRange}
+            onBrandsChange={setBrands}
+            onPriceChange={setPriceRange}
+            onReset={resetFilters}
+          />
+        </aside>
+
+        <section className={styles.products} aria-label={`${pageTitle} 상품 목록`}>
+          <ProductSort count={filteredProducts.length} value={sort} onChange={setSort} hasRatings={hasRatings} />
+          <ProductList products={filteredProducts} />
+        </section>
+      </div>
+    </main>
+  )
+}
+
+export default Products

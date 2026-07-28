@@ -1,0 +1,53 @@
+.page {
+  color: #2c2723;
+  background: #fff;
+  min-height: 70vh;
+}
+.hero {
+  padding: 54px 32px 48px;
+  text-align: center;
+  background: linear-gradient(135deg, #fff7f2, #faf5ef 48%, #f3f7f5);
+}
+.hero h1 {
+  margin: 8px 0 12px;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  color: #211c18;
+}
+.hero > p:last-child {
+  color: #786f68;
+  font-size: 15px;
+}
+.eyebrow {
+  color: #e9543b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+.content {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 42px;
+  padding: 48px 42px 72px;
+  text-align: left;
+}
+.sidebar {
+  min-width: 0;
+}
+.products {
+  min-width: 0;
+}
+@media (max-width: 800px) {
+  .hero {
+    padding: 38px 20px 34px;
+  }
+  .hero h1 {
+    font-size: 30px;
+  }
+  .content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 28px 20px 56px;
+  }
+}

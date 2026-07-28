@@ -1,0 +1,86 @@
+.searchForm {
+  display: flex;
+  width: min(100%, 480px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #ded8d2;
+  background: #faf8f6;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+
+  &:focus-within {
+    border-color: #f06a50;
+    background: #fff;
+  }
+}
+
+.searchInput {
+  min-width: 0;
+  flex: 1;
+  padding: 13px 8px 13px 17px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #29231f;
+  font: inherit;
+  font-size: 14px;
+
+  &::placeholder {
+    color: #aaa29c;
+  }
+
+  &::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+}
+
+.searchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px;
+  padding: 0 15px;
+  border: 0;
+  background: #f05a40;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+
+  svg {
+    width: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.8;
+  }
+
+  &:hover {
+    background: #df4931;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #c83c28;
+    outline-offset: 2px;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .searchForm {
+    width: 100%;
+  }
+
+  .buttonText {
+    display: none;
+  }
+
+  .searchButton {
+    padding-inline: 12px;
+  }
+}

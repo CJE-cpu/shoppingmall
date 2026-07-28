@@ -1,0 +1,9 @@
+[
+  { "id": 1, "name": "전체상품", "path": "/products", "image": null },
+  { "id": 2, "name": "국산차용품", "path": "/products/category/domestic", "image": "/img/category/domestic.png" },
+  { "id": 3, "name": "수입차용품", "path": "/products/category/imported", "image": "/img/category/imported.png" },
+  { "id": 4, "name": "튜닝파츠", "path": "/products/category/tuning", "image": "/img/category/tuning.png" },
+  { "id": 5, "name": "다이캐스트", "path": "/products/category/diecast", "image": "/img/category/diecast.png" },
+  { "id": 6, "name": "실내용품", "path": "/products/category/interior", "image": "/img/category/interior.png" },
+  { "id": 7, "name": "실외용품", "path": "/products/category/exterior", "image": "/img/category/exterior.png" }
+]

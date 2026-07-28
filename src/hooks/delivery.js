@@ -1,0 +1,1 @@
+export const DELIVERY_MINIMUM = 50000

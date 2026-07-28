@@ -1,0 +1,123 @@
+.orderSummary {
+  position: sticky;
+  top: 24px;
+  padding: 28px;
+  border: 1px solid #dedfd9;
+  border-radius: 22px;
+  background: #f8f8f4;
+  box-shadow: 0 12px 35px rgba(37, 40, 33, 0.06);
+
+  h2 {
+    padding-bottom: 20px;
+    border-bottom: 1px solid #d8d9d3;
+    font-size: 19px;
+    letter-spacing: -0.03em;
+  }
+
+  dl {
+    padding: 18px 0;
+
+    div {
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 0;
+      font-size: 14px;
+    }
+
+    dt {
+      color: #777871;
+    }
+
+    dd {
+      font-weight: 700;
+    }
+
+    em {
+      color: #df4b2d;
+      font-style: normal;
+    }
+  }
+
+  > button {
+    width: 100%;
+    min-height: 56px;
+    margin-top: 22px;
+    border-radius: 12px;
+    color: #fff;
+    background: #252821;
+    font-size: 15px;
+    font-weight: 800;
+    transition: background 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      background: #df4b2d;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.total {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-top: 20px;
+  border-top: 1px solid #d8d9d3;
+
+  span {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  strong {
+    color: #df4b2d;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+}
+
+.deliveryNotice {
+  margin-top: 24px;
+
+  p {
+    margin-top: 9px;
+    color: #6f716a;
+    font-size: 12px;
+    text-align: right;
+  }
+}
+
+.progressTrack {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 99px;
+  background: #dedfd8;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #df4b2d;
+    transition: width 0.3s ease;
+  }
+}
+
+.helper {
+  margin-top: 10px;
+  color: #92938c;
+  font-size: 11px;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .orderSummary {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .orderSummary {
+    padding: 24px 20px;
+    border-radius: 18px;
+  }
+}

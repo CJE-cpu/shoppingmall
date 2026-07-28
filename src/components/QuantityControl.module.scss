@@ -1,0 +1,40 @@
+.quantityControl {
+  display: inline-grid;
+  grid-template-columns: 34px 40px 34px;
+  overflow: hidden;
+  width: fit-content;
+  height: 36px;
+  border: 1px solid #dedad5;
+  border-radius: 10px;
+  background: #fff;
+
+  button,
+  span {
+    display: grid;
+    place-items: center;
+  }
+
+  button {
+    color: #393531;
+    background: #f7f5f2;
+    font-size: 17px;
+    transition: background 0.2s ease, color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      color: #fff;
+      background: #e04b2a;
+    }
+
+    &:disabled {
+      color: #c9c5c0;
+      cursor: not-allowed;
+    }
+  }
+
+  span {
+    border-right: 1px solid #dedad5;
+    border-left: 1px solid #dedad5;
+    font-size: 14px;
+    font-weight: 800;
+  }
+}
