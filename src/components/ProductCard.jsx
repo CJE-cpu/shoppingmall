@@ -15,6 +15,7 @@ const ProductCard = ({ product, onWishItem }) => {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const [isLiked, setIsLiked] = useState(false)
+  const [isWishlistUpdating, setIsWishlistUpdating] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const discountPrice = Math.round(product.price * (1 - (product.discountRate || 0) / 100))
   const isSoldOut = product.stock === 0
@@ -46,7 +47,11 @@ const ProductCard = ({ product, onWishItem }) => {
       return
     }
 
+    if (isWishlistUpdating) return
+
     const nextLiked = !isLiked
+    setIsLiked(nextLiked)
+    setIsWishlistUpdating(true)
 
     try {
       if (nextLiked) {
@@ -55,10 +60,12 @@ const ProductCard = ({ product, onWishItem }) => {
         await deleteUserWishlistItem({ uid: user.uid, itemId: String(product.id) })
       }
 
-      setIsLiked(nextLiked)
       onWishItem?.(product.id, nextLiked)
     } catch (error) {
+      setIsLiked(!nextLiked)
       window.alert(getWishlistErrorMessage(error))
+    } finally {
+      setIsWishlistUpdating(false)
     }
   }
 
@@ -99,6 +106,7 @@ const ProductCard = ({ product, onWishItem }) => {
           type='button'
           aria-label={`${product.name} ${isLiked ? '찜 해제' : '찜하기'}`}
           aria-pressed={isLiked}
+          aria-disabled={isWishlistUpdating}
           onClick={changeWishlist}
         >
           <img
