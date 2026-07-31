@@ -1,7 +1,8 @@
 .pagination {
   display: flex;
   justify-content: center;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 50px;
 }
 .pagination button {
@@ -10,18 +11,20 @@
   height: 36px;
   place-items: center;
   border: 1px solid #e2dcd7;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   color: #756d67;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 .pagination button:hover:not(:disabled),
 .pagination .active {
   border-color: #ee5a41;
   background: #ee5a41;
   color: #fff;
+  transform: translateY(-1px);
 }
 .pagination button:disabled {
   cursor: default;

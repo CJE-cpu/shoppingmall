@@ -11,6 +11,7 @@
   height: fit-content;
   padding: 48px;
   border: 1px solid #e7e1dc;
+  border-radius: 18px;
   background: #fff;
   box-shadow: 0 20px 60px rgba(50, 42, 36, 0.08);
 }
@@ -61,7 +62,7 @@
     height: 52px;
     padding: 0 16px;
     border: 1px solid #dcd5cf;
-    border-radius: 0;
+    border-radius: 10px;
     outline: none;
     color: #2c2723;
     background: #fff;
@@ -91,6 +92,7 @@
   height: 54px;
   margin-top: 4px;
   background: #2c2723;
+  border-radius: 10px;
   color: #fff;
   font-weight: 700;
   transition: background-color 160ms ease;

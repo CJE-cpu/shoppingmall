@@ -129,7 +129,9 @@
   min-height: 150px;
   padding: 26px;
   border: 1px solid #e1dad4;
+  border-radius: 16px;
   background: #fff;
+  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.05);
 
   > span {
     color: #756d67;
@@ -164,6 +166,7 @@
   margin-top: 24px;
   padding: 34px;
   border: 1px solid #e1dad4;
+  border-radius: 16px;
   background: #fff;
 }
 
@@ -190,12 +193,14 @@
   a {
     padding: 22px;
     border: 1px solid #ebe5e0;
+    border-radius: 12px;
     color: inherit;
     text-decoration: none;
     transition: border-color 160ms ease, transform 160ms ease;
 
     &:hover {
       border-color: #ee725d;
+      transform: translateY(-2px);
     }
 
     strong {
@@ -239,6 +244,8 @@
 .membersPanel {
   margin-top: 24px;
   border: 1px solid #e1dad4;
+  border-radius: 16px;
+  overflow: hidden;
   background: #fff;
 }
 
@@ -321,7 +328,10 @@
 .productFormPanel,
 .productListPanel {
   border: 1px solid #e1dad4;
+  border-radius: 16px;
+  overflow: hidden;
   background: #fff;
+  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.04);
 }
 
 .productListPanel {
@@ -376,6 +386,7 @@
     width: 100%;
     padding: 13px 14px;
     border: 1px solid #dcd5cf;
+    border-radius: 10px;
     outline: none;
     background: #fff;
 
@@ -424,6 +435,7 @@
 .submitButton {
   min-height: 50px;
   background: #2c2723;
+  border-radius: 10px;
   color: #fff;
   font-weight: 750;
 
@@ -450,6 +462,11 @@
     align-items: center;
     padding: 18px 28px;
     border-bottom: 1px solid #eee9e5;
+    transition: background-color 160ms ease;
+
+    &:hover {
+      background: #fcfaf8;
+    }
   }
 
   article:last-child {
@@ -478,6 +495,7 @@
     height: 36px;
     padding: 0 8px;
     border: 1px solid #d8d0ca;
+    border-radius: 8px;
     text-align: right;
 
     &:focus {
@@ -571,6 +589,7 @@
   button {
     padding: 9px 13px;
     border: 1px solid #d9d1cb;
+    border-radius: 8px;
     color: #5e5752;
 
     &:last-child {
@@ -604,7 +623,9 @@
 .noticeListPanel {
   padding: 28px;
   border: 1px solid #e1dad4;
+  border-radius: 16px;
   background: #fff;
+  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.04);
 }
 
 .noticeForm {
@@ -627,6 +648,7 @@
   textarea {
     width: 100%;
     border: 1px solid #d9d1cb;
+    border-radius: 10px;
     background: #fff;
     color: #2c2927;
     font: inherit;

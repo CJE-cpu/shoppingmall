@@ -3,7 +3,17 @@
   height: 100%;
   flex-direction: column;
   min-width: 0;
-  transition: transform 220ms ease;
+  padding: 10px 10px 14px;
+  border: 1px solid #e8e1db;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.05);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+.card:hover {
+  border-color: #ddd2ca;
+  box-shadow: 0 16px 38px rgba(55, 43, 35, 0.1);
+  transform: translateY(-3px);
 }
 .visual {
   position: relative;
@@ -125,7 +135,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  padding: 16px 2px 0;
+  padding: 16px 6px 0;
 }
 .brand {
   margin-bottom: 4px;
@@ -289,6 +299,11 @@
   background: #e04b2a;
 }
 @media (max-width: 520px) {
+  .card {
+    padding: 7px 7px 11px;
+    border-radius: 14px;
+  }
+
   .visual {
     aspect-ratio: 1;
     border-radius: 11px;

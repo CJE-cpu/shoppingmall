@@ -21,6 +21,7 @@
     min-width: 125px;
     padding: 9px 30px 9px 12px;
     border: 1px solid #d8d9d3;
+    border-radius: 10px;
     outline: 0;
     background: #fff;
     color: #4d4641;
@@ -29,4 +30,5 @@
 }
 .sort select:focus {
     border-color: #df4b2d;
+    box-shadow: 0 0 0 3px rgba(223, 75, 45, 0.1);
 }
