@@ -15,6 +15,7 @@ const Footer = () => {
               자동차를 위한 좋은 선택.<br />
               드라이브 마켓에서 나만의 카 라이프를 완성하세요.
             </p>
+            <p>학생용 포트폴리오입니다.</p>
           </div>
 
           <nav className={styles.menu} aria-label='푸터 쇼핑 메뉴'>

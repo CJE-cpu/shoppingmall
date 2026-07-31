@@ -28,7 +28,7 @@ const CartItem = ({ item, onChangeQuantity, onRemove }) => {
         <QuantityControl
           quantity={item.quantity}
           setQuantity={(newQuantity) => onChangeQuantity(item.id, newQuantity)}
-          maxQuantity={item.stock}
+          maxQuantity={item.stock ?? 99}
         />
       </div>
 

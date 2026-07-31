@@ -46,15 +46,28 @@
 .utilityNav {
   gap: 4px;
 
-  a {
+  a,
+  button,
+  .userName {
     padding: 9px 10px;
     color: #6f6862;
     font-size: 14px;
     font-weight: 600;
+  }
 
+  a,
+  button {
     &:hover {
       color: #e54b32;
     }
+  }
+
+  .userName {
+    max-width: 160px;
+    overflow: hidden;
+    color: #2c2723;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .cartLink {
@@ -68,6 +81,14 @@
       color: #fff;
     }
   }
+}
+
+.authError {
+  position: absolute;
+  right: 42px;
+  bottom: 2px;
+  color: #c73722;
+  font-size: 12px;
 }
 
 .categoryNav {
@@ -165,7 +186,9 @@
     justify-content: center;
     flex-wrap: wrap;
 
-    a {
+    a,
+    button,
+    .userName {
       display: inline-flex;
       padding-inline: 8px;
     }

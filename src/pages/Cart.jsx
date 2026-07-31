@@ -1,34 +1,97 @@
 import React, { useEffect, useState } from 'react'
-import { savelocal, loadlocal } from '../utils/localStorage'
+import { useNavigate } from 'react-router-dom'
 import CartItem from '../components/CartItem'
 import OrderSummary from '../components/OrderSummary'
 import EmptyMessage from '../components/EmptyMessage'
+import {
+  clearUserCart,
+  deleteUserCartItem,
+  getCartErrorMessage,
+  getUserCartItems,
+  updateUserCartItemQuantity,
+} from '../firebase/cartApi'
+import { createOrder, getOrderErrorMessage } from '../firebase/orderApi'
+import useAuthStore from '../store/authStore'
 import styles from './Cart.module.scss'
 
 const DELIVERY_MINIMUM = 50000
 const DELIVERY_FEE = 3000
 
 const Cart = () => {
-  const [cartItem, setCartItem] = useState(() => loadlocal('cart', []))
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const isAuthLoading = useAuthStore((state) => state.isAuthLoading)
+  const [cartItem, setCartItem] = useState([])
+  const [isCartLoading, setIsCartLoading] = useState(true)
+  const [cartError, setCartError] = useState('')
+  const [isOrdering, setIsOrdering] = useState(false)
+  const [orderError, setOrderError] = useState('')
 
   useEffect(() => {
-    savelocal('cart', cartItem)
-  }, [cartItem])
+    let isMounted = true
 
-  const clearCart = () => {
-    if (window.confirm('장바구니 상품을 모두 삭제하시겠습니까?')) {
+    const loadCart = async () => {
+      setIsCartLoading(true)
+      setCartError('')
+
+      try {
+        const items = await getUserCartItems(user.uid)
+        if (isMounted) setCartItem(items)
+      } catch (error) {
+        if (isMounted) setCartError(getCartErrorMessage(error))
+      } finally {
+        if (isMounted) setIsCartLoading(false)
+      }
+    }
+
+    loadCart()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user.uid])
+
+  const clearCart = async () => {
+    if (!window.confirm('장바구니 상품을 모두 삭제하시겠습니까?')) return
+
+    setCartError('')
+
+    try {
+      await clearUserCart(user.uid)
       setCartItem([])
+    } catch (error) {
+      setCartError(getCartErrorMessage(error))
     }
   }
 
-  const changeQuantity = (productId, newQuantity) => {
-    setCartItem((items) => items.map((item) => (
-      item.id === productId ? { ...item, quantity: newQuantity } : item
-    )))
+  const changeQuantity = async (productId, newQuantity) => {
+    setCartError('')
+
+    try {
+      await updateUserCartItemQuantity({
+        uid: user.uid,
+        itemId: productId,
+        quantity: newQuantity,
+      })
+      setCartItem((items) => items.map((item) => (
+        item.id === productId ? { ...item, quantity: newQuantity } : item
+      )))
+    } catch (error) {
+      setCartError(getCartErrorMessage(error))
+    }
   }
 
-  const removeItem = (productId) => {
-    setCartItem((items) => items.filter((item) => item.id !== productId))
+  const removeItem = async (productId) => {
+    if (!window.confirm('이 상품을 장바구니에서 삭제하시겠습니까?')) return
+
+    setCartError('')
+
+    try {
+      await deleteUserCartItem({ uid: user.uid, itemId: productId })
+      setCartItem((items) => items.filter((item) => item.id !== productId))
+    } catch (error) {
+      setCartError(getCartErrorMessage(error))
+    }
   }
 
   const subtotal = cartItem.reduce((total, item) => {
@@ -39,8 +102,49 @@ const Cart = () => {
   const totalPrice = subtotal + deliveryFee
   const remainingForFreeDelivery = Math.max(DELIVERY_MINIMUM - subtotal, 0)
 
-  const orderCart = () => {
-    window.alert('주문 페이지는 다음 단계에서 연결됩니다.')
+  const orderCart = async () => {
+    setOrderError('')
+
+    if (isAuthLoading) {
+      setOrderError('로그인 상태를 확인하고 있습니다. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+
+    if (!user) {
+      navigate('/login', { state: { from: '/cart' } })
+      return
+    }
+
+    setIsOrdering(true)
+
+    try {
+      const orderItems = cartItem.map((item) => {
+        const price = Math.round(item.price * (1 - (item.discountRate || 0) / 100))
+
+        return {
+          productId: String(item.id),
+          name: item.name,
+          quantity: item.quantity,
+          price,
+        }
+      })
+
+      await createOrder({
+        userId: user.uid,
+        items: orderItems,
+        subtotal,
+        deliveryFee,
+        totalPrice,
+      })
+      await clearUserCart(user.uid)
+      window.alert('주문이 완료되었습니다')
+      setCartItem([])
+      navigate('/mypage#orders')
+    } catch (error) {
+      setOrderError(getOrderErrorMessage(error))
+    } finally {
+      setIsOrdering(false)
+    }
   }
 
   return (
@@ -53,7 +157,11 @@ const Cart = () => {
         <span>담은 상품 <strong>{cartItem.length}</strong>개</span>
       </header>
 
-      {cartItem.length === 0 ? (
+      {isCartLoading ? (
+        <p role='status'>장바구니를 불러오는 중입니다...</p>
+      ) : cartError ? (
+        <p role='alert'>{cartError}</p>
+      ) : cartItem.length === 0 ? (
         <EmptyMessage
           image='/img/empty/empty-cart.png'
           title='장바구니가 비어 있어요'
@@ -86,6 +194,8 @@ const Cart = () => {
             remainingForFreeDelivery={remainingForFreeDelivery}
             deliveryMinimum={DELIVERY_MINIMUM}
             onOrder={orderCart}
+            isOrdering={isOrdering}
+            orderError={orderError}
           />
         </div>
       )}

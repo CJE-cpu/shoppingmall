@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import ProductFilter from '../components/ProductFilter'
 import ProductList from '../components/ProductList'
 import ProductSort from '../components/ProductSort'
+import { getProducts } from '../firebase/productApi'
 import { useCategories } from '../hooks/useProducts'
 import styles from './Products.module.scss'
 
@@ -16,9 +17,11 @@ const Products = () => {
 
   useEffect(() => {
     const loadProducts = async () => {
-      const response = await fetch('/data/products.json')
-      const productData = await response.json()
-      setProducts(productData)
+      try {
+        setProducts(await getProducts())
+      } catch {
+        setProducts([])
+      }
     }
 
     loadProducts()

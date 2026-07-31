@@ -1,15 +1,42 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ProductList from '../components/ProductList'
-import { loadlocal, savelocal } from '../utils/localStorage'
+import {
+  clearUserWishlist,
+  getUserWishlistItems,
+  getWishlistErrorMessage,
+} from '../firebase/wishlistApi'
+import useAuthStore from '../store/authStore'
 import styles from './Wishlist.module.scss'
 
 const Wishlist = () => {
-  const [wishItems, setWishItems] = useState(() => loadlocal('wishlist', []))
+  const user = useAuthStore((state) => state.user)
+  const [wishItems, setWishItems] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    savelocal('wishlist', wishItems)
-  }, [wishItems])
+    let isMounted = true
+
+    const loadWishlist = async () => {
+      setIsLoading(true)
+      setErrorMessage('')
+
+      try {
+        const items = await getUserWishlistItems(user.uid)
+        if (isMounted) setWishItems(items)
+      } catch (error) {
+        if (isMounted) setErrorMessage(getWishlistErrorMessage(error))
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+
+    loadWishlist()
+    return () => {
+      isMounted = false
+    }
+  }, [user.uid])
 
   const changeWish = (productId, isLiked) => {
     if (!isLiked) {
@@ -19,9 +46,14 @@ const Wishlist = () => {
     }
   }
 
-  const clearWishlist = () => {
+  const clearWishlist = async () => {
     if (window.confirm('찜한 상품을 모두 삭제하시겠습니까?')) {
-      setWishItems([])
+      try {
+        await clearUserWishlist(user.uid)
+        setWishItems([])
+      } catch (error) {
+        setErrorMessage(getWishlistErrorMessage(error))
+      }
     }
   }
 
@@ -35,7 +67,11 @@ const Wishlist = () => {
         <span>관심 상품 <strong>{wishItems.length}</strong>개</span>
       </header>
 
-      {wishItems.length === 0 ? (
+      {isLoading ? (
+        <p className={styles.empty}>찜 목록을 불러오는 중입니다...</p>
+      ) : errorMessage ? (
+        <p className={styles.empty} role='alert'>{errorMessage}</p>
+      ) : wishItems.length === 0 ? (
         <section className={styles.empty}>
           <div className={styles.heartIcon} aria-hidden='true'>
             <svg viewBox='0 0 24 24'>
@@ -50,7 +86,7 @@ const Wishlist = () => {
         <section className={styles.content} aria-label='찜한 상품 목록'>
           <div className={styles.toolbar}>
             <p>
-              저장한 상품은 이 브라우저에서 계속 확인할 수 있어요.
+              저장한 상품은 로그인 계정의 찜 목록에서 계속 확인할 수 있어요.
             </p>
             <button type='button' onClick={clearWishlist}>전체 삭제</button>
           </div>

@@ -1,0 +1,2538 @@
+[2026-07-29] 1단계 코드 분석 문서화
+
+1. 작업 내용
+- React Vite 쇼핑몰 프로젝트의 폴더 구조, 상품 데이터 흐름, 로그인/회원가입 진입점, 라우터, Zustand, Firebase 수정 대상 및 권장 작업 순서를 분석했다.
+- 애플리케이션 소스 코드는 수정하지 않았다.
+
+2. 생성 파일
+- codeAnalysis.txt
+  생성 이유: 사용자가 요청한 1단계 코드 분석 결과를 텍스트 파일로 보관하기 위해 생성했다.
+
+- historyCode.txt
+  생성 이유: 프로젝트 작업 시 파일 수정·추가·생성 내역과 이유를 단계별로 기록하라는 작업 규칙을 적용하기 위해 생성했다.
+
+3. Firebase 및 보안 규칙
+- 이번 단계에서는 Firebase 기능을 수정하거나 추가하지 않았다.
+- 따라서 Firestore 및 Storage 보안 규칙 변경도 발생하지 않았다.
+- 환경변수의 실제 값은 문서에 기록하지 않았다.
+
+4. 검증
+- 분석 문서와 이력 문서만 생성했으며 기존 React 애플리케이션 파일은 변경하지 않았다.
+
+
+[2026-07-29] 2단계 Firebase 기본 설정
+
+1. 작업 내용
+- React Vite 환경에서 Firebase JavaScript 모듈 방식을 사용하도록 공통 초기화 파일을 구성했다.
+- Firebase 설정값을 소스 코드에서 제거하고 import.meta.env 기반 환경변수로 변경했다.
+- Firebase Authentication, Firestore, Storage 인스턴스를 공통으로 내보내도록 구성했다.
+- 기존 화면, React 컴포넌트, SCSS Modules 및 products.json 상품 기능은 수정하지 않았다.
+
+2. 수정 파일
+- src/firebase/firebase.js
+  수정 이유: 하드코딩된 Firebase 설정을 제거하고 Vite 환경변수를 사용하기 위해 수정했다.
+  수정 이유: 이후 인증, 데이터베이스, 이미지 저장 기능에서 재사용할 auth, db, storage 인스턴스를 제공하기 위해 수정했다.
+
+- .gitignore
+  수정 이유: 실제 Firebase 환경변수가 들어 있는 .env 계열 파일이 Git에 포함되지 않도록 하기 위해 수정했다.
+  수정 이유: 값이 없는 템플릿인 .env.example은 Git에 포함할 수 있도록 예외 처리했다.
+
+- historyCode.txt
+  수정 이유: 2단계 변경 파일, 변경 이유, 패키지 상태, 검증 결과와 보안 규칙 기준을 기록하기 위해 수정했다.
+
+3. 생성 파일
+- .env.example
+  생성 이유: 실제 값을 노출하지 않고 필요한 Vite Firebase 환경변수 이름을 안내하기 위해 생성했다.
+  환경변수의 실제 값은 작성하지 않았다.
+
+4. 패키지
+- firebase 12.16.0이 package.json과 node_modules에 이미 설치되어 있음을 확인했다.
+- 필요한 패키지가 이미 준비되어 있어 중복 설치하거나 package-lock.json을 변경하지 않았다.
+
+5. Firebase 보안 규칙
+- 이번 단계는 Firebase 클라이언트 초기화만 구성하며 Firestore 또는 Storage의 읽기·쓰기 기능은 아직 연결하지 않는다.
+- 실제 기능 구현 전 기본 테스트 환경에서는 아래와 같이 모든 접근을 차단하는 규칙을 기준으로 사용한다.
+
+Firestore 기본 차단 규칙:
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+Storage 기본 차단 규칙:
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+- 이후 인증, 상품, 주문 또는 관리자 기능을 추가할 때 해당 데이터 구조에 맞는 규칙과 테스트 조건을 함께 갱신해야 한다.
+- 관리자 화면의 라우트 제한만으로 쓰기 권한을 보호하지 않으며, 관리자 기능은 Firestore 및 Storage 규칙 검증 전에는 완료로 판단하지 않는다.
+
+6. 검증 결과
+- npm run lint: 오류 없이 완료했다.
+- 기존 파일인 src/pages/Login.jsx와 src/pages/Notice.jsx의 미사용 styles import 경고 2건은 남아 있다.
+- 해당 경고는 이번 Firebase 기본 설정과 관련이 없으며 기존 화면을 수정하지 않는 조건에 따라 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 최초 샌드박스 실행에서는 프로세스 실행 권한으로 인한 spawn EPERM이 발생했으나, 동일 명령을 허용된 환경에서 다시 실행하여 정상 빌드를 확인했다.
+
+
+[2026-07-29] 3단계 Firebase 이메일/비밀번호 회원가입 및 로그인
+
+1. 작업 내용
+- Firebase Authentication 이메일/비밀번호 방식으로 회원가입, 로그인, 로그아웃 기능을 구현했다.
+- 회원가입 성공 시 Firestore users/{uid} 문서에 email, nickname, role, createAt을 저장하도록 연결했다.
+- users 문서 ID는 Firebase Authentication에서 발급한 uid를 사용한다.
+- role은 클라이언트 코드와 Firestore 보안 규칙에서 모두 user만 허용하도록 구성했다.
+- 로그인 성공 시 홈(/)으로 이동하도록 연결했다.
+- Firebase 오류 코드와 입력 검증 오류를 한글 메시지로 표시하도록 구성했다.
+- Header에 인증 상태, 사용자 이름, 로그아웃 기능을 연결했다.
+- 기존 React 함수형 컴포넌트와 SCSS Modules 구조를 유지했다.
+- 상품 JSON, 상품 목록, 상품 상세, 장바구니 및 찜 기능은 수정하지 않았다.
+
+2. 수정 파일
+- src/firebase/authApi.js
+  수정 이유: Firebase 회원가입, 로그인, 로그아웃, 인증 상태 구독과 한글 오류 메시지를 공통 함수로 제공하기 위해 수정했다.
+  수정 이유: 회원가입 시 Auth 프로필 nickname과 Firestore users/{uid} 문서를 함께 생성하기 위해 수정했다.
+
+- src/store/authStore.js
+  수정 이유: Header를 포함한 여러 컴포넌트에서 사용자와 인증 로딩 상태를 공유하도록 Zustand 스토어를 구성하기 위해 수정했다.
+
+- src/hooks/useAuth.js
+  수정 이유: Firebase onAuthStateChanged를 구독하고 Zustand 인증 상태를 갱신하기 위해 수정했다.
+
+- src/pages/Login.jsx
+  수정 이유: 기존 빈 로그인 페이지에 이메일/비밀번호 입력, 제출 상태, 한글 오류 표시와 로그인 성공 후 홈 이동을 연결하기 위해 수정했다.
+
+- src/pages/Login.module.scss
+  수정 이유: 기존 SCSS Modules 방식을 유지하면서 로그인 화면을 기존 쇼핑몰 색상과 반응형 구조에 맞추기 위해 수정했다.
+
+- src/pages/SignUp.jsx
+  수정 이유: 이메일, 닉네임, 비밀번호, 비밀번호 확인 입력과 Firebase 회원가입을 연결하기 위해 수정했다.
+  수정 이유: 닉네임 길이, 비밀번호 길이 및 비밀번호 일치 여부를 한글 메시지로 검증하기 위해 수정했다.
+
+- src/pages/SignUp.module.scss
+  수정 이유: 기존 SCSS Modules 방식을 유지하면서 회원가입 화면을 기존 쇼핑몰 색상과 반응형 구조에 맞추기 위해 수정했다.
+
+- src/components/Header.jsx
+  수정 이유: 비로그인 상태에는 로그인/회원가입 링크를 표시하고 로그인 상태에는 사용자 이름/로그아웃 버튼을 표시하기 위해 수정했다.
+
+- src/components/Header.module.scss
+  수정 이유: 기존 Header 디자인을 유지하면서 사용자 이름, 로그아웃 버튼 및 오류 메시지 스타일을 추가하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 3단계 변경 파일, 변경 이유, 보안 규칙과 검증 결과를 기록하기 위해 수정했다.
+
+3. 생성 파일
+- firestore.rules
+  생성 이유: users 컬렉션의 사용자 문서 생성, 조회, 수정 권한을 서버 측에서 제한하기 위해 생성했다.
+
+- firebase.json
+  생성 이유: Firebase CLI가 firestore.rules 파일을 Firestore 규칙으로 인식할 수 있도록 연결하기 위해 생성했다.
+
+4. Firestore users 문서 구조
+users/{firebase uid}
+- email: Firebase Authentication 사용자의 이메일
+- nickname: 2자 이상 20자 이하 문자열
+- role: 기본값 user
+- createAt: Firestore serverTimestamp
+
+5. Firestore 보안 규칙
+- 회원가입된 사용자만 자신의 uid와 같은 users 문서를 생성할 수 있다.
+- 생성할 수 있는 필드는 email, nickname, role, createAt으로 제한한다.
+- email은 인증 토큰의 이메일과 같아야 한다.
+- role은 반드시 user여야 한다.
+- createAt은 서버 요청 시간과 같아야 한다.
+- 사용자는 자신의 users 문서만 읽을 수 있다.
+- 사용자는 자신의 nickname만 수정할 수 있다.
+- 사용자가 role, email, createAt을 수정하거나 users 문서를 삭제하는 것은 차단한다.
+- users 이외의 모든 Firestore 문서는 현재 기본 차단한다.
+
+테스트 가능한 규칙 코드:
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'email',
+          'nickname',
+          'role',
+          'createAt'
+        ])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() >= 2
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.role == 'user'
+        && request.resource.data.createAt == request.time;
+
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nickname'
+        ])
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() >= 2
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+보안 규칙 테스트 항목:
+- 인증 사용자가 users/{본인 uid}에 role: user로 문서 생성: 허용
+- 비인증 사용자의 users 문서 생성: 거부
+- 인증 사용자가 다른 uid의 users 문서 생성 또는 읽기: 거부
+- 사용자가 생성 시 role: admin 지정: 거부
+- 사용자가 생성 후 role 변경: 거부
+- 사용자가 자신의 nickname만 정상 범위에서 변경: 허용
+- 사용자가 자신의 email 또는 createAt 변경: 거부
+- 사용자가 자신의 문서 삭제: 거부
+
+6. 검증 결과
+- npm run lint: 이번 작업에서 추가·수정한 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 이번 작업 범위가 아니므로 수정하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- Firebase 모듈을 포함한 102개 모듈이 정상 변환되었다.
+- 번들 크기 500 kB 초과 안내가 있으나 빌드 실패나 인증 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 다시 실행해 성공을 확인했다.
+
+7. Firebase Console에서 필요한 설정
+- Authentication > Sign-in method에서 이메일/비밀번호 제공업체를 활성화해야 한다.
+- Firestore Database를 생성해야 한다.
+- firestore.rules를 배포해야 실제 프로젝트에 보안 규칙이 적용된다.
+- 환경변수의 실제 값은 코드와 이력 문서에 기록하지 않았다.
+
+
+[2026-07-29] 4-1단계 마이페이지 기본 화면 및 접근 권한
+
+1. 작업 내용
+- 로그인 사용자만 접근할 수 있는 /mypage 경로와 마이페이지 기본 화면을 구현했다.
+- Firebase Authentication 인증 상태 확인이 끝나기 전에는 로딩 문구를 표시하도록 구성했다.
+- 새로고침 직후 인증 상태가 확인되기 전에는 로그인 페이지로 이동하지 않도록 처리했다.
+- 인증 확인이 끝난 뒤 비로그인 상태일 때만 /login으로 이동하도록 구성했다.
+- 마이페이지에 회원 정보, 회원 정보 수정, 주문 내역, 장바구니, 찜한 상품 기본 영역을 배치했다.
+- 각 영역의 실제 Firebase, 주문, 장바구니 및 찜 데이터는 연결하지 않았다.
+- 기존 Header와 Routes 배치를 유지하면서 필요한 import, 경로 및 마이페이지 링크만 추가했다.
+- 기존 React 함수형 컴포넌트와 SCSS Modules 구조를 유지했다.
+
+2. 수정 파일
+- src/components/ProtectedRoute.jsx
+  수정 이유: Firebase 인증 상태 로딩, 비로그인 이동, 로그인 사용자 접근 허용을 처리하기 위해 수정했다.
+
+- src/pages/MyPage.jsx
+  수정 이유: 마이페이지의 다섯 가지 기본 영역과 내부 이동 메뉴를 구성하기 위해 수정했다.
+
+- src/pages/MyPage.module.scss
+  수정 이유: 기존 쇼핑몰 디자인과 SCSS Modules 방식을 유지한 마이페이지 및 반응형 스타일을 적용하기 위해 수정했다.
+
+- src/App.jsx
+  수정 이유: /mypage 경로를 등록하고 MyPage를 ProtectedRoute로 보호하기 위해 수정했다.
+
+- src/components/Header.jsx
+  수정 이유: 로그인 사용자에게 마이페이지 진입 링크를 제공하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 4-1단계 변경 파일, 변경 이유, 보안 규칙 영향 및 검증 결과를 기록하기 위해 수정했다.
+
+3. 생성 파일
+- src/components/ProtectedRoute.module.scss
+  생성 이유: 인증 확인 중 로딩 화면을 기존 SCSS Modules 방식으로 표시하기 위해 생성했다.
+
+4. 접근 처리 순서
+- isAuthLoading이 true이면 "인증 상태 확인 중입니다..." 로딩 화면을 표시한다.
+- 인증 확인이 완료되고 user가 없으면 /login으로 이동한다.
+- 인증 확인이 완료되고 user가 있으면 MyPage를 표시한다.
+- 따라서 Firebase가 로그인 세션을 복원하는 새로고침 과정에서 로그인 페이지로 먼저 이동하지 않는다.
+
+5. Firebase 보안 규칙
+- 이번 단계에서는 Firestore 또는 Storage 데이터를 새로 읽거나 쓰지 않으므로 firestore.rules와 Storage 규칙을 변경하지 않았다.
+- 마이페이지 기본 화면은 Firebase Authentication 로그인 여부만 확인한다.
+- 이전 단계의 users 규칙은 본인 문서만 읽을 수 있고 role 변경을 차단하는 상태로 유지된다.
+- 다음 단계에서 회원 정보나 주문 데이터를 연결할 때 본인 UID 기준 읽기·쓰기 규칙과 테스트 항목을 함께 추가해야 한다.
+
+6. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 106개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 마이페이지 접근 처리 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 다시 실행해 성공을 확인했다.
+
+
+[2026-07-29] 4-2단계 마이페이지 회원 정보 연결
+
+1. 작업 내용
+- 현재 로그인한 사용자의 Firebase uid로 Firestore users/{uid} 문서를 조회하도록 연결했다.
+- 회원 정보 영역에 닉네임, 이메일, 가입일을 표시하도록 구현했다.
+- Firestore Timestamp의 toDate()를 사용해 가입일을 한국 날짜 형식으로 표시하도록 구현했다.
+- 회원 정보 조회 중 로딩 문구와 조회 실패 시 한글 오류 메시지를 표시하도록 구현했다.
+- 사용자가 자신의 닉네임과 비밀번호를 수정할 수 있도록 연결했다.
+- 닉네임 변경 시 Firestore users 문서와 Firebase Authentication displayName을 함께 갱신한다.
+- 비밀번호 변경 시 현재 비밀번호로 재인증한 뒤 Firebase Authentication 비밀번호를 변경한다.
+- 주문 내역, 장바구니, 찜한 상품 영역은 수정하지 않았다.
+
+2. 수정 파일
+- src/firebase/userApi.js
+  수정 이유: 기존 빈 파일을 재사용해 users/{uid} 조회, 닉네임 수정, 비밀번호 재인증 및 변경 기능을 제공하기 위해 수정했다.
+  수정 이유: Firestore 및 Authentication 오류를 한글 메시지로 변환하기 위해 수정했다.
+
+- src/pages/MyPage.jsx
+  수정 이유: 회원 정보 조회 상태, 닉네임·이메일·가입일 표시, 닉네임 및 비밀번호 수정 폼을 연결하기 위해 수정했다.
+  수정 이유: Firestore Timestamp 가입일을 ko-KR 날짜 형식으로 변환하기 위해 수정했다.
+
+- src/pages/MyPage.module.scss
+  수정 이유: 기존 SCSS Modules 방식으로 회원 정보 목록, 조회 상태, 오류 상태 및 수정 폼 스타일을 추가하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 4-2단계 Firebase 기능, 변경 파일, 보안 규칙 및 검증 결과를 기록하기 위해 수정했다.
+
+3. 회원 정보 처리
+- 조회 경로: users/{현재 로그인 사용자 uid}
+- 표시 필드: nickname, email, createAt
+- 가입일: Timestamp이면 toDate()로 변환한 후 연·월·일이 포함된 한국 날짜 형식으로 표시
+- 닉네임: 2자 이상 20자 이하 검증
+- 비밀번호: 현재 비밀번호 재인증, 새 비밀번호 6자 이상 및 확인 값 일치 검증
+
+4. Firestore 보안 규칙
+- 기존 firestore.rules가 본인 users 문서 읽기와 nickname 필드만 수정을 허용하므로 이번 기능 요구사항을 충족한다.
+- 비밀번호 변경은 Firestore가 아니라 Firebase Authentication에서 재인증 후 처리된다.
+- 규칙 조건 변경이 필요하지 않아 firestore.rules 파일은 수정하지 않았다.
+
+이번 기능에 적용되는 테스트 가능한 규칙 코드:
+match /users/{userId} {
+  allow read: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'nickname'
+    ])
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() >= 2
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.role == resource.data.role;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 users/{본인 uid} 조회: 허용
+- 비로그인 사용자의 users 문서 조회: 거부
+- 로그인 사용자가 users/{다른 uid} 조회: 거부
+- 로그인 사용자가 본인 nickname만 정상 길이로 수정: 허용
+- 로그인 사용자가 nickname과 role을 함께 수정: 거부
+- 로그인 사용자가 email 또는 createAt 수정: 거부
+- 로그인 사용자가 2자 미만 또는 20자 초과 nickname으로 수정: 거부
+
+5. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 107개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 회원 정보 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 다시 실행해 성공을 확인했다.
+
+
+[2026-07-29] 4-3단계 Firestore users 문서가 없는 인증 사용자 처리
+
+1. 작업 내용
+- Firebase Authentication 사용자는 존재하지만 Firestore users/{uid} 문서가 없는 경우 기본 회원 문서를 자동 생성하도록 구현했다.
+- Firestore 트랜잭션 안에서 문서 존재 여부를 확인해 기존 문서가 있으면 아무 내용도 쓰지 않도록 처리했다.
+- 문서가 없을 때만 email, nickname, role, createAt을 저장한다.
+- 기본 role은 반드시 user로 저장한다.
+- 기본 가입일은 Firestore serverTimestamp()로 저장한다.
+- 생성 완료 후 users/{uid} 문서를 다시 조회해 마이페이지 회원 정보 영역에 표시한다.
+- 생성 또는 조회 실패 시 기존 한글 오류 처리 흐름으로 메시지를 표시한다.
+
+2. 수정 파일
+- src/firebase/userApi.js
+  수정 이유: 기존 단순 조회를 트랜잭션 기반 조회 또는 생성 함수로 변경하기 위해 수정했다.
+  수정 이유: 기존 users 문서 덮어쓰기를 방지하고, 없는 문서에만 안전한 기본값을 저장하기 위해 수정했다.
+  수정 이유: 기본 문서 생성 실패 오류를 한글 메시지로 제공하기 위해 수정했다.
+
+- src/pages/MyPage.jsx
+  수정 이유: 회원 정보 조회 시 getOrCreateUserProfile을 호출해 없는 문서를 생성한 후 회원 정보를 표시하기 위해 수정했다.
+  수정 이유: 사용자 객체 전체를 사용하는 useEffect 의존성을 정확히 지정해 린트 경고를 해결하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 4-3단계 Firebase 기능, 변경 이유, 보안 규칙 및 검증 결과를 기록하기 위해 수정했다.
+
+3. 기본 users 문서 구조
+users/{현재 로그인 사용자 uid}
+- email: 현재 Firebase Authentication 사용자의 이메일
+- nickname: Authentication displayName, 이메일 앞부분, 또는 "신규회원" 순서로 선택
+- role: user
+- createAt: serverTimestamp()
+
+4. 기존 문서 보호 방식
+- runTransaction으로 users/{uid}를 먼저 읽는다.
+- 문서가 존재하면 transaction.set을 실행하지 않고 종료한다.
+- 문서가 없을 때만 transaction.set으로 기본 문서를 생성한다.
+- 트랜잭션 완료 후 getDoc으로 서버 Timestamp가 반영된 최종 문서를 조회한다.
+- 따라서 기존 nickname, role, 가입일 등의 데이터는 덮어쓰지 않는다.
+
+5. Firestore 보안 규칙
+- 기존 firestore.rules의 create 규칙이 본인 uid, 허용 필드, 인증 이메일, role: user, 요청 시간 기반 createAt을 강제하므로 이번 자동 생성 기능에 적용할 수 있다.
+- 규칙 조건 변경이 필요하지 않아 firestore.rules 파일은 수정하지 않았다.
+
+이번 기능에 적용되는 테스트 가능한 생성 규칙 코드:
+allow create: if request.auth != null
+  && request.auth.uid == userId
+  && request.resource.data.keys().hasOnly([
+    'email',
+    'nickname',
+    'role',
+    'createAt'
+  ])
+  && request.resource.data.email == request.auth.token.email
+  && request.resource.data.nickname is string
+  && request.resource.data.nickname.size() >= 2
+  && request.resource.data.nickname.size() <= 20
+  && request.resource.data.role == 'user'
+  && request.resource.data.createAt == request.time;
+
+보안 및 동작 테스트 항목:
+- 본인 users 문서가 없고 올바른 기본 데이터로 생성: 허용
+- 본인 users 문서가 이미 존재: 쓰기 없이 기존 문서 반환
+- 다른 사용자의 uid로 기본 문서 생성: 거부
+- 비로그인 사용자의 기본 문서 생성: 거부
+- role을 admin으로 지정한 기본 문서 생성: 거부
+- Authentication 이메일과 다른 email로 기본 문서 생성: 거부
+- createAt을 클라이언트 임의 날짜로 지정: 거부
+- 허용되지 않은 추가 필드를 포함해 생성: 거부
+
+6. 검증 결과
+- 최초 린트에서 MyPage useEffect가 사용자 객체를 사용하면서 uid만 의존성에 포함한 경고를 확인했다.
+- 의존성을 사용자 객체로 수정한 뒤 npm run lint를 다시 실행했다.
+- npm run lint: 이번 단계 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 107개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 users 문서 생성 오류는 아니다.
+- 샌드박스의 spawn EPERM 이후 허용된 환경에서 동일 빌드를 실행해 성공을 확인했다.
+
+
+[2026-07-29] 4-4단계 마이페이지 주문 내역 연결
+
+1. 작업 내용
+- 기존 빈 src/firebase/orderApi.js를 재사용해 현재 로그인 사용자의 주문을 Firestore에서 조회하도록 구현했다.
+- 최상위 orders 컬렉션에서 userId가 현재 로그인 사용자 uid와 같은 문서만 조회한다.
+- 조회한 주문을 createAt 기준 최신 주문이 위에 오도록 정렬한다.
+- 마이페이지 주문 영역에 상품명, 주문일, 수량, 주문 금액을 표시한다.
+- 금액과 수량은 ko-KR 쉼표 형식으로 표시하고 주문 금액 뒤에 원을 붙인다.
+- 주문이 없으면 "아직 주문 내역이 없습니다" 문구와 상품 목록 이동 링크를 표시한다.
+- 주문 조회 상태와 오류 상태를 회원 정보 상태와 분리했다.
+- 주문 조회가 실패해도 회원 정보와 회원 정보 수정 영역은 그대로 유지된다.
+- 주문 조회 및 정렬에 localStorage를 사용하지 않았다.
+- 회원 정보, 회원 정보 수정, 장바구니 및 찜 영역의 데이터 처리 로직은 수정하지 않았다.
+
+2. 수정 파일
+- src/firebase/orderApi.js
+  수정 이유: 현재 사용자 uid 기준 orders 조회, 주문 데이터 정규화, createAt 최신순 정렬과 한글 오류 메시지를 제공하기 위해 수정했다.
+
+- src/pages/MyPage.jsx
+  수정 이유: 주문 전용 로딩·데이터·오류 상태를 추가하고 주문 영역만 Firestore 조회 결과에 연결하기 위해 수정했다.
+  수정 이유: 주문이 없을 때 안내 문구와 /products 이동 링크를 표시하기 위해 수정했다.
+
+- src/pages/MyPage.module.scss
+  수정 이유: 기존 SCSS Modules 방식으로 주문 목록, 주문 상품, 주문 금액 및 빈 주문 상태의 반응형 스타일을 추가하기 위해 수정했다.
+
+- firestore.rules
+  수정 이유: 로그인 사용자가 userId가 자신의 uid인 주문 문서만 읽을 수 있도록 서버 측 접근 권한을 추가하기 위해 수정했다.
+  수정 이유: 이번 조회 단계에서는 클라이언트의 주문 생성·수정·삭제를 모두 차단하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 4-4단계 변경 내용, 주문 스키마, 보안 규칙과 검증 결과를 기록하기 위해 수정했다.
+
+3. 조회 대상 주문 구조
+orders/{orderId}
+- userId: 주문 사용자 Firebase uid
+- createAt: 주문 생성 Firestore Timestamp
+- items: 주문 상품 배열
+  - name 또는 productName: 상품명
+  - quantity: 수량
+- totalPrice: 주문 금액
+
+호환 처리
+- items 배열이 없는 단일 상품 주문은 productName 또는 name과 quantity 필드를 사용한다.
+- 주문 금액은 totalPrice를 우선하며, 기존 데이터 호환을 위해 totalAmount 또는 amount도 읽을 수 있다.
+- 값이 없는 주문 금액은 0원으로 표시한다.
+
+4. 최신순 정렬
+- userId 조건으로 본인 주문만 Firestore에서 조회한다.
+- 각 문서의 createAt이 Timestamp이면 toMillis() 값으로 변환한다.
+- 변환한 시간을 내림차순 정렬하여 최신 주문을 위에 표시한다.
+- 복합 인덱스 없이 동작하도록 사용자 주문만 조회한 뒤 클라이언트에서 정렬한다.
+
+5. Firestore 보안 규칙
+추가한 테스트 가능한 규칙 코드:
+match /orders/{orderId} {
+  allow read: if request.auth != null
+    && resource.data.userId == request.auth.uid;
+
+  allow create, update, delete: if false;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 userId가 본인 uid인 주문 조회: 허용
+- 로그인 사용자가 userId가 다른 uid인 주문 조회: 거부
+- 비로그인 사용자의 주문 조회: 거부
+- 클라이언트에서 주문 생성: 거부
+- 클라이언트에서 주문 수정: 거부
+- 클라이언트에서 주문 삭제: 거부
+- where('userId', '==', 현재 uid) 조건의 본인 주문 목록 조회: 허용
+- userId 필터가 없거나 다른 uid를 포함할 수 있는 목록 조회: 거부
+
+6. 오류 분리
+- 주문 조회는 회원 정보 조회와 별도의 useEffect에서 실행한다.
+- ordersError는 주문 영역에서만 사용한다.
+- 주문 조회 실패 시 주문 영역에만 한글 오류 메시지를 표시한다.
+- profile과 profileError 상태는 주문 요청의 성공 또는 실패에 영향을 받지 않는다.
+
+7. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 108개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 주문 조회 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 실행해 성공을 확인했다.
+
+8. 적용 전 확인
+- 변경된 firestore.rules를 Firebase 프로젝트에 배포해야 orders 읽기 권한이 실제 서비스에 적용된다.
+- 현재 주문 생성 기능은 아직 연결되지 않았으며 보안 규칙에서도 클라이언트 생성을 차단한다.
+
+
+[2026-07-29] 장바구니 주문 버튼과 마이페이지 주문 내역 연결
+
+1. 작업 내용
+- 장바구니 페이지의 기존 임시 주문 알림을 Firestore 주문 생성 기능으로 교체했다.
+- 로그인 사용자가 주문 버튼을 누르면 장바구니 상품, 수량, 단가, 상품 금액, 배송비, 총 주문 금액을 orders 컬렉션에 저장한다.
+- 주문 생성 시 userId는 현재 로그인 사용자의 Firebase uid를 사용한다.
+- createAt은 Firestore serverTimestamp()를 사용한다.
+- 주문 생성에 성공한 경우에만 장바구니를 비우고 /mypage#orders로 이동한다.
+- 마이페이지가 새로 열리면서 기존 getUserOrders 조회가 실행되어 생성된 주문을 주문 내역 영역에 표시한다.
+- 주문 생성 실패 시 장바구니 데이터를 유지하고 결제 요약 영역에만 한글 오류 메시지를 표시한다.
+- 주문 처리 중에는 주문 버튼을 비활성화해 중복 요청을 방지한다.
+- 비로그인 사용자가 주문 버튼을 누르면 로그인 페이지로 이동한다.
+
+2. 수정 파일
+- src/firebase/orderApi.js
+  수정 이유: orders 컬렉션에 주문 문서를 생성하는 createOrder 함수를 추가하기 위해 수정했다.
+  수정 이유: 주문 생성과 조회에 공통으로 사용할 한글 오류 메시지를 제공하기 위해 수정했다.
+
+- src/pages/Cart.jsx
+  수정 이유: 현재 인증 상태를 확인하고 장바구니 데이터를 주문 문서 구조로 변환해 Firestore에 저장하기 위해 수정했다.
+  수정 이유: 주문 성공 후 장바구니 비우기와 마이페이지 주문 영역 이동을 처리하기 위해 수정했다.
+
+- src/components/OrderSummary.jsx
+  수정 이유: 주문 처리 상태, 버튼 비활성화 및 주문 실패 한글 오류 메시지를 표시하기 위해 수정했다.
+
+- src/components/OrderSummary.module.scss
+  수정 이유: 기존 SCSS Modules 구조로 주문 오류와 비활성화 버튼 스타일을 추가하기 위해 수정했다.
+
+- firestore.rules
+  수정 이유: 로그인 사용자가 자신의 uid로 제한된 주문 구조만 생성할 수 있도록 orders create 규칙을 추가하기 위해 수정했다.
+  수정 이유: 주문 수정과 삭제는 계속 차단하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 장바구니 주문 연결 변경 내용, 보안 규칙 및 검증 결과를 기록하기 위해 수정했다.
+
+3. 생성되는 주문 문서
+orders/{자동 생성 문서 ID}
+- userId: 현재 로그인 사용자 uid
+- items: 주문 상품 배열
+  - productId: 상품 ID 문자열
+  - name: 상품명
+  - quantity: 주문 수량
+  - price: 장바구니 화면에서 계산된 상품 단가
+- subtotal: 상품 금액 합계
+- deliveryFee: 배송비
+- totalPrice: subtotal + deliveryFee
+- createAt: serverTimestamp()
+
+4. 주문 처리 순서
+- Firebase Authentication 상태 확인
+- 비로그인 상태이면 /login으로 이동
+- 장바구니 상품을 주문 items 배열로 변환
+- Firestore orders 문서 생성
+- 성공한 경우 장바구니 상태와 기존 localStorage 장바구니를 즉시 비움
+- /mypage#orders로 이동
+- 마이페이지에서 사용자 uid 기준 주문을 다시 조회해 최신순 표시
+- 실패한 경우 장바구니는 비우지 않고 한글 오류 표시
+
+5. Firestore 보안 규칙
+수정된 테스트 가능한 orders 규칙 코드:
+match /orders/{orderId} {
+  allow read: if request.auth != null
+    && resource.data.userId == request.auth.uid;
+
+  allow create: if request.auth != null
+    && request.resource.data.keys().hasOnly([
+      'userId',
+      'items',
+      'subtotal',
+      'deliveryFee',
+      'totalPrice',
+      'createAt'
+    ])
+    && request.resource.data.userId == request.auth.uid
+    && request.resource.data.items is list
+    && request.resource.data.items.size() > 0
+    && request.resource.data.items.size() <= 50
+    && request.resource.data.subtotal is number
+    && request.resource.data.subtotal >= 0
+    && request.resource.data.deliveryFee is number
+    && request.resource.data.deliveryFee >= 0
+    && request.resource.data.totalPrice is number
+    && request.resource.data.totalPrice
+      == request.resource.data.subtotal + request.resource.data.deliveryFee
+    && request.resource.data.createAt == request.time;
+
+  allow update, delete: if false;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 자신의 uid로 정상 주문 생성: 허용
+- 비로그인 사용자의 주문 생성: 거부
+- 다른 사용자의 uid를 userId로 지정해 주문 생성: 거부
+- 빈 items 배열 또는 50개를 초과한 items 배열로 주문 생성: 거부
+- 음수 subtotal 또는 deliveryFee로 주문 생성: 거부
+- totalPrice가 subtotal + deliveryFee와 다른 주문 생성: 거부
+- createAt을 임의 클라이언트 날짜로 지정: 거부
+- 허용되지 않은 최상위 필드를 포함한 주문 생성: 거부
+- 생성된 주문 수정 또는 삭제: 거부
+- 자신의 주문 조회: 허용
+- 다른 사용자의 주문 조회: 거부
+
+6. 보안 참고
+- 현재 규칙은 인증 사용자, 문서 소유권, 최상위 주문 구조, 합계 관계를 검증한다.
+- 상품 단가를 클라이언트에서 전달하므로 실제 결제 또는 정산 기능에서는 신뢰 가능한 서버 환경에서 상품 가격과 총액을 다시 검증해야 한다.
+- 현재 구현은 쇼핑몰 주문 내역 연결 단계이며 결제 승인 기능은 아니다.
+
+7. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 108개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 주문 생성 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 실행해 성공을 확인했다.
+
+8. 적용 전 확인
+- 변경된 firestore.rules를 Firebase 프로젝트에 배포해야 주문 생성과 사용자별 조회가 실제 서비스에 적용된다.
+
+
+[2026-07-29] 주문 완료 안내창 추가
+
+1. 작업 내용
+- 장바구니 주문 버튼으로 Firestore 주문 저장이 성공하면 "주문이 완료되었습니다" 안내창을 표시하도록 추가했다.
+- 안내창 확인 후 장바구니를 비우고 /mypage#orders로 이동한다.
+- 마이페이지 진입 후 기존 주문 조회 기능이 저장된 주문을 불러와 주문 내역에 표시한다.
+- Firestore 주문 저장이 실패하면 완료 안내창을 표시하지 않고 기존 주문 오류 메시지를 유지한다.
+
+2. 수정 파일
+- src/pages/Cart.jsx
+  수정 이유: Firestore 주문 생성 성공과 장바구니 초기화 사이에 주문 완료 안내창을 표시하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 주문 완료 안내창 추가 내용과 검증 결과를 기록하기 위해 수정했다.
+
+3. Firebase 보안 규칙
+- 주문 문서의 필드, 소유권 및 생성 권한은 변경되지 않아 firestore.rules를 수정하지 않았다.
+- 이전 단계의 orders create/read 규칙이 동일하게 적용된다.
+
+4. 처리 순서
+- 주문 버튼 클릭
+- Firestore orders 문서 생성
+- 생성 성공 시 "주문이 완료되었습니다" 안내창 표시
+- 안내창 확인 후 장바구니 초기화
+- /mypage#orders 이동
+- 사용자 UID 기준 주문 내역 조회 및 표시
+
+5. 검증 결과
+- npm run lint: 이번 수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 108개 모듈이 정상 변환되었다.
+
+
+[2026-07-29] 4-5단계 마이페이지 Firestore 장바구니 연결
+
+1. 작업 내용
+- 마이페이지의 장바구니 영역을 Firestore carts/{uid}/items 하위 컬렉션과 연결했다.
+- 현재 로그인 사용자의 uid를 장바구니 문서 경로에 사용한다.
+- 상품명, 가격, 수량, 상품별 금액과 전체 합계 금액을 표시한다.
+- 상품별 금액은 price * quantity로 계산한다.
+- 전체 합계는 모든 상품별 금액의 합으로 계산한다.
+- 금액과 수량은 ko-KR 쉼표 형식으로 표시한다.
+- 장바구니가 비어 있으면 안내 문구와 /cart 이동 링크를 표시한다.
+- 각 상품의 삭제 버튼을 누르면 confirm으로 삭제 여부를 확인한 뒤 해당 Firestore 문서만 삭제한다.
+- 장바구니 조회 및 삭제 실패는 장바구니 영역에만 한글 오류 메시지로 표시한다.
+- 회원 정보, 회원 정보 수정, 주문 내역 및 찜 영역의 상태와 기능은 수정하지 않았다.
+- 마이페이지 Firestore 장바구니 조회와 삭제에는 localStorage를 사용하지 않았다.
+
+2. 생성 파일
+- src/firebase/cartApi.js
+  생성 이유: 기존 src/firebase/cartApi.js가 없어 Firestore 장바구니 조회, 개별 삭제 및 한글 오류 처리를 분리하기 위해 필요한 경우에만 생성했다.
+
+3. 수정 파일
+- src/pages/MyPage.jsx
+  수정 이유: 사용자 uid 기준 Firestore 장바구니 조회, 독립 상태, 금액 계산, 빈 상태, 이동 링크 및 개별 삭제 기능을 연결하기 위해 수정했다.
+
+- src/pages/MyPage.module.scss
+  수정 이유: 기존 SCSS Modules 방식으로 장바구니 목록, 금액, 삭제 버튼, 전체 합계 및 반응형 스타일을 추가하기 위해 수정했다.
+
+- firestore.rules
+  수정 이유: 사용자가 본인의 carts/{uid}/items 문서만 읽고 삭제할 수 있도록 서버 측 권한을 추가하기 위해 수정했다.
+  수정 이유: 이번 마이페이지 조회·삭제 단계에서는 클라이언트 생성과 수정을 차단하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 4-5단계 변경 파일, Firestore 구조, 보안 규칙 및 검증 결과를 기록하기 위해 수정했다.
+
+4. Firestore 장바구니 구조
+carts/{현재 로그인 사용자 uid}/items/{장바구니 상품 문서 ID}
+- name 또는 productName: 상품명
+- price: 상품 가격
+- quantity: 상품 수량
+
+표시 계산
+- 상품별 금액: price * quantity
+- 전체 합계 금액: 모든 상품의 price * quantity 합계
+
+5. Firestore 보안 규칙
+추가한 테스트 가능한 규칙 코드:
+match /carts/{userId}/items/{itemId} {
+  allow read, delete: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow create, update: if false;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 carts/{본인 uid}/items 조회: 허용
+- 로그인 사용자가 carts/{다른 uid}/items 조회: 거부
+- 비로그인 사용자의 장바구니 조회: 거부
+- 로그인 사용자가 본인의 장바구니 상품 개별 삭제: 허용
+- 로그인 사용자가 다른 사용자의 장바구니 상품 삭제: 거부
+- 비로그인 사용자의 장바구니 상품 삭제: 거부
+- 이번 단계에서 클라이언트 장바구니 문서 생성 또는 수정: 거부
+
+6. 오류 분리
+- cartItems, isCartLoading, cartError를 회원 및 주문 상태와 별도로 관리한다.
+- 장바구니 조회 또는 삭제 실패 시 cartError만 변경한다.
+- 따라서 장바구니 오류로 회원 정보나 주문 내역이 사라지지 않는다.
+
+7. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 109개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 장바구니 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 실행해 성공을 확인했다.
+
+8. 적용 전 확인
+- 변경된 firestore.rules를 Firebase 프로젝트에 배포해야 carts 읽기·삭제 권한이 실제 서비스에 적용된다.
+- 기존 장바구니 페이지는 이번 4-5단계 작업 범위에서 변경하지 않았으며, 마이페이지 장바구니는 Firestore 데이터만 조회한다.
+
+
+[2026-07-29] Firestore 보안 규칙 배포
+
+1. 작업 내용
+- firebase-tools 15.24.0을 npx로 임시 실행해 전역 패키지 설치 없이 배포했다.
+- Firebase CLI 로그인 계정을 확인했다.
+- .env의 VITE_FIREBASE_PROJECT_ID 값을 배포 명령에 사용했으며 실제 환경변수 값은 이력 문서에 기록하지 않았다.
+- firebase.json에 연결된 firestore.rules만 대상 Firebase 프로젝트에 배포했다.
+
+2. 배포 결과
+- Firestore API 활성화 상태를 확인했다.
+- firestore.rules 서버 컴파일에 성공했다.
+- 새 Firestore ruleset 업로드에 성공했다.
+- cloud.firestore 활성 릴리스에 새 규칙 적용을 완료했다.
+- Firebase CLI 결과: Deploy complete.
+
+3. 현재 배포된 주요 권한
+- users: 본인 문서 생성·읽기 및 nickname 수정만 허용
+- orders: 본인 주문 읽기, 제한된 구조의 본인 주문 생성 허용
+- orders: 수정 및 삭제 차단
+- carts/{uid}/items: 본인 장바구니 읽기 및 삭제 허용
+- carts/{uid}/items: 현재 생성 및 수정 차단
+- 그 외 Firestore 문서 접근은 기본 차단
+
+4. 수정 파일
+- historyCode.txt
+  수정 이유: 실제 Firestore 규칙 배포 일시, 방법, 컴파일 및 활성화 결과를 기록하기 위해 수정했다.
+
+5. 확인 사항
+- 애플리케이션 소스와 환경변수는 이번 배포 과정에서 수정하지 않았다.
+- Firebase CLI는 npx 임시 실행 방식으로 사용했으므로 package.json과 package-lock.json을 변경하지 않았다.
+
+
+[2026-07-29] 마이페이지 Firestore 찜한 상품 연결
+
+1. 작업 내용
+- 요청 제목은 장바구니였지만 세부 조건이 찜한 상품 조회·삭제를 요구하므로 마이페이지 찜 영역 연결로 처리했다.
+- 기존 src/firebase/wishlidtApi.js 또는 찜 전용 Firebase API 파일이 없어 올바른 이름의 src/firebase/wishlistApi.js를 필요한 경우에만 생성했다.
+- 현재 로그인 사용자 uid 기준 wishlists/{uid}/items 하위 컬렉션을 조회한다.
+- 상품 이미지, 상품명, 가격, 수량, 상품별 금액과 전체 합계 금액을 표시한다.
+- 상품별 금액은 price * quantity로 계산한다.
+- 찜한 상품이 없으면 안내 문구와 /products 이동 링크를 표시한다.
+- 각 상품 삭제 전에 confirm으로 삭제 여부를 확인한다.
+- 찜 목록 조회·삭제 실패는 찜 영역 상태에만 한글 오류 메시지로 표시한다.
+- 회원 정보, 회원 정보 수정, 주문 내역 및 장바구니 영역의 데이터와 상태는 그대로 유지한다.
+- 마이페이지 찜 조회와 삭제에는 localStorage를 사용하지 않았다.
+
+2. 생성 파일
+- src/firebase/wishlistApi.js
+  생성 이유: Firestore 찜 목록 조회, 개별 삭제, 데이터 정규화와 한글 오류 처리를 분리하기 위해 생성했다.
+
+3. 수정 파일
+- src/pages/MyPage.jsx
+  수정 이유: 사용자 uid 기준 찜 목록 조회, 상품 이미지·가격·수량·금액 표시, 독립 오류 상태와 개별 삭제 기능을 연결하기 위해 수정했다.
+
+- src/pages/MyPage.module.scss
+  수정 이유: 기존 SCSS Modules 디자인을 유지하면서 찜 상품 이미지, 목록, 삭제 버튼, 합계와 반응형 스타일을 추가하기 위해 수정했다.
+
+- firestore.rules
+  수정 이유: 사용자가 본인의 wishlists/{uid}/items만 읽고 삭제할 수 있도록 보안 규칙을 추가하기 위해 수정했다.
+  수정 이유: 이번 조회·삭제 단계에서는 찜 문서 생성과 수정을 차단하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 찜 영역 변경 내용, Firestore 구조, 보안 규칙 및 검증 결과를 기록하기 위해 수정했다.
+
+4. Firestore 찜 목록 구조
+wishlists/{현재 로그인 사용자 uid}/items/{찜 상품 문서 ID}
+- image: 상품 이미지 경로
+- name 또는 productName: 상품명
+- price: 상품 가격
+- quantity: 상품 수량
+
+5. Firestore 보안 규칙
+추가한 테스트 가능한 규칙 코드:
+match /wishlists/{userId}/items/{itemId} {
+  allow read, delete: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow create, update: if false;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 wishlists/{본인 uid}/items 조회: 허용
+- 로그인 사용자가 wishlists/{다른 uid}/items 조회: 거부
+- 비로그인 사용자의 찜 목록 조회: 거부
+- 로그인 사용자가 본인의 찜 상품 개별 삭제: 허용
+- 로그인 사용자가 다른 사용자의 찜 상품 삭제: 거부
+- 비로그인 사용자의 찜 상품 삭제: 거부
+- 이번 단계에서 클라이언트 찜 문서 생성 또는 수정: 거부
+
+6. 오류 분리
+- wishlistItems, isWishlistLoading, wishlistError를 회원·주문·장바구니 상태와 별도로 관리한다.
+- 찜 목록 조회 또는 삭제 실패 시 wishlistError만 변경한다.
+- 따라서 찜 영역 오류가 발생해도 회원 정보, 주문 내역과 장바구니는 계속 표시된다.
+
+7. 검증 결과
+- npm run lint: 이번 단계의 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 작업 범위가 아니므로 변경하지 않았다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 110개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 찜 목록 기능 오류는 아니다.
+- 최초 샌드박스 빌드의 spawn EPERM은 실행 환경 제한이며, 허용된 환경에서 동일 빌드를 실행해 성공을 확인했다.
+
+8. Firestore 규칙 배포 결과
+- 변경된 firestore.rules를 현재 환경변수에 연결된 Firebase 프로젝트에 배포했다.
+- 서버 규칙 컴파일에 성공했다.
+- 새 ruleset 업로드와 cloud.firestore 활성 릴리스 적용에 성공했다.
+- Firebase CLI 결과: Deploy complete.
+- 환경변수의 실제 값은 이력 문서에 기록하지 않았다.
+
+==================================================
+4-7단계 - 마이페이지 최종 점검
+작업일: 2026-07-29
+==================================================
+
+1. 점검 결과
+- 비회원 접근 제한: /mypage, /wishlist, /cart는 ProtectedRoute를 통해 로그인 사용자만 접근한다.
+- 새로고침 로그인 확인: Firebase onAuthStateChanged가 인증 세션 복원 결과를 Zustand에 반영한다.
+- 잘못된 리다이렉트 방지: isAuthLoading이 true인 동안 인증 확인 문구를 표시하며 로그인 페이지로 이동하지 않는다.
+- 회원 정보: 현재 uid의 users/{uid} 문서를 조회하고, 문서가 없을 때만 기본 문서를 생성한다.
+- 닉네임 수정: users/{uid}의 nickname만 수정하며 2~20자 검증과 role 변조 차단 규칙을 적용한다.
+- 비밀번호 수정: 현재 비밀번호로 재인증한 후 Firebase Authentication 비밀번호를 수정한다. Firestore 규칙 대상이 아니다.
+- 주문 내역: 현재 uid가 userId인 orders 문서만 조회하며 createAt 최신순으로 표시한다.
+- 장바구니: carts/{uid}/items를 조회하고 수량 수정, 개별 삭제, 전체 삭제를 Firestore로 처리한다.
+- 찜 목록: wishlists/{uid}/items를 조회하고 개별 삭제한다.
+- 독립 상태: 회원 정보, 주문, 장바구니, 찜 목록은 각각 별도의 loading/error 상태와 useEffect를 사용한다. 한 영역의 실패가 다른 영역을 숨기지 않는다.
+- localStorage: 장바구니와 찜 데이터에서 localStorage 사용을 모두 제거했다.
+
+2. 수정한 파일과 이유
+- src/App.jsx
+  수정 이유: Firestore 개인 장바구니만 사용하도록 /cart도 ProtectedRoute로 보호했다.
+- src/firebase/cartApi.js
+  수정 이유: Firestore 장바구니 수량 수정 API를 추가했다.
+- src/components/ProductCard.jsx
+  수정 이유: localStorage 저장을 제거하고 비로그인 사용자는 로그인 화면으로 이동하며 로그인 사용자는 Firestore에만 저장하도록 변경했다.
+- src/pages/ProductDetail.jsx
+  수정 이유: localStorage 저장을 제거하고 로그인 사용자 장바구니를 Firestore에만 저장하도록 변경했다.
+- src/pages/Cart.jsx
+  수정 이유: localStorage 조회 및 저장을 제거하고 Firestore 조회, 수량 변경, 개별 삭제, 전체 삭제, 주문 후 삭제를 연결했다.
+- src/components/CartItem.jsx
+  수정 이유: Firestore 장바구니 문서에 재고 필드가 없어도 수량 증가 조작이 가능하도록 기존 수량 조절의 기본 최대값을 설정했다.
+- src/utils/localStorage.js
+  삭제 이유: 프로젝트에서 더 이상 참조하지 않는 localStorage 유틸리티이며 개인 데이터 저장 경로를 Firestore로 통일했다.
+- firestore.rules
+  수정 이유: 찜 목록도 본인 경로에서 create, read, update, delete가 가능하도록 update 규칙을 추가하고 데이터 구조를 검증했다.
+- historyCode.txt
+  수정 이유: 단계별 점검 결과, 수정 이유, 보안 규칙, 검사 결과를 기록했다.
+
+3. Firebase Console에서 직접 적용할 Firestore 보안 규칙
+중요: 이번 단계에서는 자동 배포하지 않았다.
+Firebase Console > Firestore Database > 규칙에서 아래 firestore.rules 전체 코드를 직접 붙여넣고 게시해야 한다.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'email',
+          'nickname',
+          'role',
+          'createAt'
+        ])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() >= 2
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.role == 'user'
+        && request.resource.data.createAt == request.time;
+
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nickname'
+        ])
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() >= 2
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'items',
+          'subtotal',
+          'deliveryFee',
+          'totalPrice',
+          'createAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.subtotal is number
+        && request.resource.data.subtotal >= 0
+        && request.resource.data.deliveryFee is number
+        && request.resource.data.deliveryFee >= 0
+        && request.resource.data.totalPrice is number
+        && request.resource.data.totalPrice
+          == request.resource.data.subtotal + request.resource.data.deliveryFee
+        && request.resource.data.createAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    match /carts/{userId}/items/{itemId} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'productId',
+          'image',
+          'name',
+          'price',
+          'quantity'
+        ])
+        && request.resource.data.productId == itemId
+        && request.resource.data.image is string
+        && request.resource.data.name is string
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'quantity'
+        ])
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0;
+    }
+
+    match /wishlists/{userId}/items/{itemId} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'productId',
+          'image',
+          'name',
+          'price',
+          'quantity',
+          'createAt'
+        ])
+        && request.resource.data.productId == itemId
+        && request.resource.data.image is string
+        && request.resource.data.name is string
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.quantity == 1
+        && request.resource.data.createAt == request.time;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'productId',
+          'image',
+          'name',
+          'price',
+          'quantity',
+          'createAt'
+        ])
+        && request.resource.data.productId == resource.data.productId
+        && request.resource.data.productId == itemId
+        && request.resource.data.image is string
+        && request.resource.data.name is string
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.quantity == 1
+        && request.resource.data.createAt == resource.data.createAt;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+4. 보안 규칙 테스트 항목
+- 비로그인 사용자의 users, orders, carts, wishlists 접근: 거부
+- 로그인 사용자의 다른 uid 사용자 문서 및 장바구니·찜 하위 컬렉션 접근: 거부
+- 본인의 users 문서 조회와 nickname 수정: 허용
+- 본인의 role, email, createAt 수정: 거부
+- 본인의 장바구니 create, read, quantity update, delete: 허용
+- 장바구니 quantity 이외 필드 update: 거부
+- 본인의 찜 목록 create, read, 검증된 update, delete: 허용
+- 찜 productId와 문서 ID 불일치 또는 createAt 변경: 거부
+- 본인 userId 주문 생성과 조회: 허용
+- 주문 수정과 삭제: 거부
+
+5. localStorage 제거 확인
+- src 전체에서 localStorage, loadlocal, savelocal, cart-updated 검색 결과: 0건
+- src/utils/localStorage.js 삭제 완료
+- 장바구니와 찜 목록의 사용자 데이터 저장소는 Firestore로 통일됨
+
+6. 검사 결과
+- npm run lint: 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 기존 경고로 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 109개 모듈 정상 변환
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+==================================================
+5-4 추가 작업 - 관리자 상품 재고관리
+작업일: 2026-07-29
+==================================================
+
+1. 구현 내용
+- 관리자 상품 목록에 상품별 현재 재고 입력과 재고 상태를 표시한다.
+- 관리자가 재고 입력값을 변경하면 유효성 검사 후 Firestore에 즉시 저장한다.
+- 여러 자리 숫자를 안정적으로 입력할 수 있도록 입력 완료 후 포커스를 이동하거나 Enter를 누르는 즉시 저장한다.
+- 저장 성공 후 현재 관리자 상품 목록의 재고와 상태를 즉시 갱신한다.
+- 재고 변경 시 updateAt을 serverTimestamp()로 갱신한다.
+- 재고 저장 실패 시 기존 재고 값으로 되돌리고 한글 오류 메시지를 표시한다.
+- 재고 부족 기준은 5개 이하로 설정했다.
+
+2. 재고 상태 기준
+- stock == 0: 품절
+- stock >= 1 && stock <= 5: 재고 부족
+- stock >= 6: 재고 정상
+
+3. 입력 검증
+- 관리자 등록·수정 폼과 목록 재고 입력에 min=0, step=1을 적용했다.
+- 클라이언트 API에서도 Number.isInteger와 0 이상 조건을 확인한다.
+- 음수, 소수, 숫자가 아닌 값은 저장하지 않고 "재고는 0 이상의 정수만 입력할 수 있습니다."를 표시한다.
+- Firestore 보안 규칙에서도 stock is int와 stock >= 0을 강제한다.
+
+4. 사용자 상품 화면 품절 처리
+- 상품 목록 카드에 품절 배지를 표시한다.
+- 품절 상품의 장바구니 버튼은 품절 문구로 변경하고 비활성화한다.
+- 품절 상품에서 장바구니 함수가 직접 호출되어도 한글 안내 후 저장을 차단한다.
+- 상품 상세에 품절 상태와 구매 불가 문구를 표시한다.
+- 품절 상품의 수량 감소·증가 버튼을 모두 비활성화한다.
+- 품절 상품의 장바구니와 바로 구매 버튼을 비활성화한다.
+- 상품 상세 총 상품금액 영역은 품절 시 구매 불가로 표시한다.
+
+5. 수정 파일과 이유
+- src/firebase/adminApi.js
+  수정 이유: 재고를 0 이상의 정수로 검증하고 stock과 updateAt을 즉시 수정하는 관리자 API를 추가했다.
+- src/components/AdminProducts.jsx
+  수정 이유: 상품별 재고 입력, 즉시 저장, 상태 표시, 목록 즉시 갱신과 한글 오류 처리를 구현했다.
+- src/pages/Admin.module.scss
+  수정 이유: 재고 입력과 품절·재고 부족·재고 정상 상태 스타일을 추가했다.
+- src/components/ProductCard.jsx
+  수정 이유: 상품 목록의 품절 표시와 장바구니 차단을 구현했다.
+- src/components/ProductCard.module.scss
+  수정 이유: 품절 배지와 비활성 장바구니 버튼 스타일을 추가했다.
+- src/pages/ProductDetail.jsx
+  수정 이유: 상품 상세의 품절 표시, 수량 선택 차단, 장바구니 및 구매 차단을 구현했다.
+- src/pages/ProductDetail.module.scss
+  수정 이유: 품절 문구와 구매 버튼 비활성 스타일을 추가했다.
+- src/components/QuantityControl.jsx
+  수정 이유: 품절 시 수량 조절 전체를 비활성화할 수 있는 disabled 속성을 추가했다.
+- firestore.rules
+  수정 이유: stock 자료형을 number에서 int로 강화해 소수 재고 저장을 서버에서도 거부한다.
+- historyCode.txt
+  수정 이유: 재고 기준, 변경 파일, 보안 규칙과 검사 결과를 기록했다.
+
+6. Firestore 보안 규칙
+상품 검증 규칙 중 재고 부분:
+&& product.stock is int
+&& product.stock >= 0
+
+상품 수정 규칙:
+match /products/{productId} {
+  allow update: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == resource.data.createAt
+    && request.resource.data.updateAt == request.time;
+}
+
+보안 규칙 테스트 항목:
+- 관리자가 stock을 0 이상의 정수로 변경하고 updateAt에 서버 시간 사용: 허용
+- 일반 사용자와 비로그인 사용자의 stock 변경: 거부
+- 관리자의 음수 재고 저장: 거부
+- 관리자의 소수 재고 저장: 거부
+- createAt 변경 또는 updateAt 임의 값 저장: 거부
+
+7. 검사 및 배포 결과
+- npm run lint: 이번 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 116개 모듈 정상 변환
+- Firestore 정수 재고 규칙 서버 컴파일 성공
+- 변경된 Firestore 규칙 배포 성공
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+==================================================
+5-4단계 - 관리자 상품 관리 및 재고 관리
+작업일: 2026-07-29
+==================================================
+
+1. 구현 내용
+- 관리자 전용 /admin/products 화면에 상품 등록, 수정, 삭제 및 재고관리 기능을 구현했다.
+- 상품 등록 시 Firestore addDoc을 사용해 자동 문서 ID를 생성한다.
+- 상품 생성 시 createAt과 updateAt에 serverTimestamp()를 저장한다.
+- 상품 수정 시 updateAt만 serverTimestamp()로 갱신하고 createAt은 유지한다.
+- 상품 삭제 전 confirm으로 삭제 여부를 확인한다.
+- 추천 여부는 isRecommended boolean 필드를 사용한다.
+- 기존 products.json의 필드 구조와 상세 이미지 배열을 최대한 유지한다.
+- 이미지 입력은 기존 공개 이미지 경로 또는 외부 URL 문자열 방식으로 처리한다.
+
+2. 관리자 상품 입력 항목
+- 상품명
+- 카테고리명
+- 카테고리 값
+- 가격
+- 할인율
+- 재고
+- 이미지 경로 또는 URL
+- 설명
+- 추천 여부
+
+3. Firestore products 데이터 구조
+컬렉션 경로:
+products/{Firestore 자동 ID}
+
+필수 필드:
+- name: string, 상품명
+- brand: string, 브랜드. 관리자 신규 등록 기본값은 Drive Market
+- category: string, 사용자 화면에 표시할 카테고리명
+- categoryValue: string, 카테고리 필터에 사용할 값
+- price: number, 원래 가격, 0 이상
+- discountRate: number, 할인율, 0 이상 100 이하
+- stock: number, 재고 수량, 0 이상
+- image: string, 대표 이미지 경로 또는 URL
+- images: array, 대표 이미지와 상세 이미지 경로 배열
+- description: string, 상품 설명
+- isRecommended: boolean, 추천상품 여부
+- createAt: Timestamp, 최초 등록 서버 시간
+- updateAt: Timestamp, 마지막 수정 서버 시간
+
+products.json 마이그레이션 문서에만 사용하거나 선택적으로 유지하는 필드:
+- legacyId: number, 기존 JSON 숫자 ID
+- sortOrder: number, 기존 JSON 표시 순서
+- badge: string, 상품 배지
+- rating: number, 평점
+- reviews: number, 리뷰 수
+
+화면에서 사용하는 id:
+- Firestore 문서 ID를 product.id로 변환한다.
+- 기존 숫자 상품 링크와 기존 장바구니·찜 링크 호환을 위해 문서 ID 조회 실패 시 legacyId로 한 번 더 조회한다.
+
+4. products.json 마이그레이션
+- products 컬렉션이 비어 있을 때만 마이그레이션하도록 중복 방지 검사를 수행했다.
+- public/data/products.json의 상품 28개를 Firestore 자동 ID 문서로 생성했다.
+- 기존 id는 legacyId로 보존했다.
+- 기존 배열 순서는 sortOrder로 보존했다.
+- 기존 홈 화면 노출을 유지하기 위해 최초 8개 상품에 isRecommended: true를 저장했다.
+- 모든 문서에 createAt과 updateAt을 serverTimestamp()로 저장했다.
+- 마이그레이션 후 읽기 전용 검증 결과:
+  * 전체 상품 문서: 28개
+  * 20자리 Firestore 자동 ID 문서: 전체 정상
+  * legacyId 저장 문서: 28개
+  * isRecommended true 문서: 8개
+- 관리자 비밀번호와 환경변수 실제 값은 파일 또는 이력에 기록하지 않았다.
+
+5. 상품 사용자 화면 Firestore 전환
+- src/pages/Home.jsx: isRecommended가 true인 Firestore 상품을 홈 추천상품으로 표시
+- src/pages/Products.jsx: Firestore 전체 상품을 불러와 기존 카테고리, 브랜드, 가격, 정렬 기능 유지
+- src/pages/SearchResult.jsx: Firestore 상품을 불러와 기존 상품명, 카테고리, 브랜드 검색 유지
+- src/pages/ProductDetail.jsx: Firestore 문서 ID로 상품 상세 조회
+- src 전체 products.json 직접 조회 검색 결과: 0건
+- public/data/products.json은 마이그레이션 원본과 백업 용도로 유지하지만 런타임 화면에서는 사용하지 않는다.
+
+6. 수정 및 추가 파일
+- src/firebase/productApi.js
+  추가 이유: Firestore 상품 전체 조회, 추천상품 조회, 상세 조회, 데이터 정규화와 오류 처리를 제공한다.
+- src/firebase/adminApi.js
+  수정 이유: 관리자 상품 등록, 수정, 삭제, 전체 조회 API를 추가했다.
+- src/components/AdminProducts.jsx
+  추가 이유: 상품 등록·수정 폼과 상품·재고 목록, 삭제 확인, 로딩 및 오류 처리를 구현했다.
+- src/pages/Admin.jsx
+  수정 이유: /admin/products 경로에서 실제 상품관리 컴포넌트를 표시한다.
+- src/pages/Admin.module.scss
+  수정 이유: 상품 폼, 재고 목록, 이미지, 수정·삭제 버튼의 SCSS Module 스타일과 반응형 레이아웃을 추가했다.
+- src/pages/Home.jsx
+  수정 이유: JSON 대신 Firestore 추천상품을 조회한다.
+- src/pages/Products.jsx
+  수정 이유: JSON 대신 Firestore 전체 상품을 조회한다.
+- src/pages/SearchResult.jsx
+  수정 이유: JSON 대신 Firestore 상품을 검색한다.
+- src/pages/ProductDetail.jsx
+  수정 이유: JSON 대신 Firestore 상품 상세 문서를 조회한다.
+- firestore.rules
+  수정 이유: 상품 읽기와 관리자 전용 create, update, delete 권한 및 필드 검증을 추가했다.
+- historyCode.txt
+  수정 이유: 변경 파일, 데이터 구조, 마이그레이션, 보안 규칙과 검사 결과를 기록했다.
+
+7. Firestore 상품 보안 규칙
+function isValidProduct(product) {
+  return product.keys().hasAll([
+      'name',
+      'brand',
+      'category',
+      'categoryValue',
+      'price',
+      'discountRate',
+      'stock',
+      'image',
+      'images',
+      'description',
+      'isRecommended',
+      'createAt',
+      'updateAt'
+    ])
+    && product.keys().hasOnly([
+      'name',
+      'brand',
+      'category',
+      'categoryValue',
+      'price',
+      'discountRate',
+      'stock',
+      'image',
+      'images',
+      'description',
+      'isRecommended',
+      'createAt',
+      'updateAt',
+      'legacyId',
+      'sortOrder',
+      'badge',
+      'rating',
+      'reviews'
+    ])
+    && product.name is string
+    && product.brand is string
+    && product.category is string
+    && product.categoryValue is string
+    && product.price is number
+    && product.price >= 0
+    && product.discountRate is number
+    && product.discountRate >= 0
+    && product.discountRate <= 100
+    && product.stock is number
+    && product.stock >= 0
+    && product.image is string
+    && product.images is list
+    && product.description is string
+    && product.isRecommended is bool
+    && (!('legacyId' in product) || product.legacyId is int)
+    && (!('sortOrder' in product) || product.sortOrder is int)
+    && (!('badge' in product) || product.badge is string)
+    && (!('rating' in product) || product.rating is number)
+    && (!('reviews' in product) || product.reviews is int);
+}
+
+match /products/{productId} {
+  allow read: if true;
+
+  allow create: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == request.time
+    && request.resource.data.updateAt == request.time;
+
+  allow update: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == resource.data.createAt
+    && request.resource.data.updateAt == request.time;
+
+  allow delete: if isAdmin();
+}
+
+보안 규칙 테스트 항목:
+- 비로그인 및 로그인 사용자의 상품 목록·상세 조회: 허용
+- role: admin 사용자의 정상 상품 생성: 허용
+- 일반 사용자와 비로그인 사용자의 상품 생성·수정·삭제: 거부
+- 관리자의 정상 필드 상품 수정과 재고 변경: 허용
+- createAt 변경 또는 updateAt 임의 시간 저장: 거부
+- 음수 가격, 음수 재고, 100 초과 할인율: 거부
+- 허용하지 않은 필드가 포함된 상품 생성·수정: 거부
+- 관리자의 상품 삭제: 허용
+
+8. 검사 및 배포 결과
+- npm run lint: 이번 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 116개 모듈 정상 변환
+- Firestore 상품 규칙 서버 컴파일 성공
+- Firestore 상품 규칙 배포 성공
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+9. 주의 사항
+- 이미지 파일 업로드 기능이 아니라 기존 프로젝트 구조와 같은 이미지 경로 또는 URL 입력 방식이다.
+- 상품을 삭제해도 과거 주문 문서의 상품명과 가격 스냅샷은 유지된다.
+- 기존 장바구니와 찜 문서에 숫자 productId가 남아 있을 수 있어 legacyId 상세 조회 호환을 유지했다.
+
+==================================================
+5-4 추가 작업 - 상품 수정·삭제 및 추천 버튼 정리
+작업일: 2026-07-29
+==================================================
+
+1. 점검 및 구현 내용
+- 상품 수정 버튼을 누르면 선택한 Firestore 상품의 기존 상품명, 카테고리, 가격, 할인율, 재고, 이미지, 설명, 추천 여부를 폼에 표시한다.
+- 상품 수정 성공 후 Firestore 목록을 다시 조회해 변경 내용을 즉시 반영한다.
+- 상품 삭제 전에 상품명을 포함한 confirm을 표시한다.
+- 삭제 성공 후 현재 목록 상태에서 해당 상품을 즉시 제거한다.
+- Firestore 오류는 상품관리 전용 한글 오류 메시지로 표시한다.
+- 상품 목록에서 카테고리보다 상품명을 먼저 표시한다.
+- 버튼을 추천 또는 추천 해제, 수정, 삭제 순서로 정렬했다.
+- 추천 버튼으로 isRecommended를 변경하고 성공 직후 현재 목록에 반영한다.
+- 추천 변경 중에는 해당 상품 버튼을 비활성화하고 변경 중 문구를 표시한다.
+
+2. 수정 파일과 이유
+- src/firebase/adminApi.js
+  수정 이유: isRecommended와 updateAt만 안전하게 변경하는 관리자 추천 상태 수정 API를 추가했다.
+- src/components/AdminProducts.jsx
+  수정 이유: 추천 토글, 기존 데이터 수정 폼 표시, 삭제 확인, 즉시 목록 갱신, 상품명 우선 표시와 버튼 순서를 보완했다.
+- src/pages/Admin.module.scss
+  수정 이유: 추천·수정·삭제 버튼 정렬, 추천 활성 스타일과 상품명 우선 정보 구조 스타일을 보완했다.
+- historyCode.txt
+  수정 이유: 기능 보완 내용, 권한 규칙과 검사 결과를 기록했다.
+
+3. Firestore 보안 규칙
+기존 배포 규칙을 그대로 사용한다.
+
+match /products/{productId} {
+  allow read: if true;
+
+  allow create: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == request.time
+    && request.resource.data.updateAt == request.time;
+
+  allow update: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == resource.data.createAt
+    && request.resource.data.updateAt == request.time;
+
+  allow delete: if isAdmin();
+}
+
+보안 확인:
+- 관리자 상품 수정, 재고 변경, 추천 상태 변경: 허용
+- 관리자 상품 삭제: 허용
+- 일반 사용자와 비로그인 사용자의 상품 수정·삭제: 거부
+- createAt 변경 또는 updateAt 임의 값 저장: 거부
+
+4. 검사 결과
+- npm run lint: 이번 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 116개 모듈 정상 변환
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+==================================================
+5-3단계 - 관리자 페이지 회원관리
+작업일: 2026-07-29
+==================================================
+
+1. 구현 내용
+- 관리자 전용 /admin/members 화면을 Firestore users 컬렉션과 연결했다.
+- 표시 항목은 닉네임, 이메일, 가입일이다.
+- createAt 기준 내림차순 쿼리를 사용해 최신 가입 회원부터 표시한다.
+- Firestore Timestamp 가입일을 한국 날짜 형식으로 변환한다.
+- 회원 목록 조회 중 로딩 문구를 표시한다.
+- 조회 실패 시 회원관리 영역에 한글 오류 메시지를 표시한다.
+- 등록된 회원이 없으면 빈 목록 안내 문구를 표시한다.
+- 전체 회원 수를 회원관리 상단에 표시한다.
+
+2. 수정 및 추가 파일
+- src/firebase/adminApi.js
+  추가 이유: 관리자 전용 users 전체 조회와 한글 오류 메시지 변환 기능을 분리해 이후 관리자 기능에서도 재사용할 수 있도록 했다.
+- src/components/AdminMembers.jsx
+  추가 이유: 회원 목록의 조회, 로딩, 오류, 빈 목록과 테이블 표시를 독립 컴포넌트로 구현했다.
+- src/pages/Admin.jsx
+  수정 이유: /admin/members 경로에서 준비 화면 대신 실제 AdminMembers 컴포넌트를 표시하도록 연결했다.
+- src/pages/Admin.module.scss
+  수정 이유: 기존 관리자 디자인을 유지하면서 회원 수 요약, 회원 테이블, 로딩 및 오류 영역 스타일을 추가했다.
+- historyCode.txt
+  수정 이유: 구현 내용, 변경 파일, 보안 규칙과 검사 결과를 기록했다.
+
+3. Firestore 조회
+collection: users
+정렬: orderBy('createAt', 'desc')
+반환 필드:
+- nickname
+- email
+- createAt
+
+4. Firestore 보안 규칙
+이전 단계에서 작성하고 배포한 아래 규칙을 그대로 재사용한다.
+
+function isAdmin() {
+  return request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+      == 'admin';
+}
+
+match /users/{userId} {
+  allow read: if request.auth != null
+    && (request.auth.uid == userId || isAdmin());
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'nickname'
+    ])
+    && request.resource.data.role == resource.data.role;
+}
+
+보안 규칙 동작:
+- role: admin 사용자의 users 컬렉션 전체 조회: 허용
+- 일반 사용자의 users 전체 목록 조회: 거부
+- 일반 사용자의 users/{본인 uid} 단일 문서 조회: 허용
+- 일반 사용자의 다른 회원 문서 조회: 거부
+- 비로그인 사용자의 users 문서 조회: 거부
+- 클라이언트에서 role 변경: 거부
+
+5. 기존 기능 유지
+- /admin/*는 기존 AdminRoute가 계속 보호한다.
+- 관리자 role 확인 중에는 회원관리 화면을 먼저 표시하지 않는다.
+- 로그인, 회원가입, 마이페이지와 다른 관리자 메뉴는 수정하지 않았다.
+- 일반 사용자의 본인 회원정보 조회와 닉네임 수정 기능을 유지한다.
+
+6. 검사 결과
+- npm run lint: 이번 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 114개 모듈 정상 변환
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+7. 주의 사항
+- firestore.rules는 Firebase Console에서 직접 게시해야 실제 서비스에 반영된다.
+- 비밀번호 변경은 Firestore가 아니라 Firebase Authentication에서 재인증 후 처리된다.
+- 기존 브라우저 localStorage에 이미 남아 있는 과거 cart/wishlist 값은 코드에서 더 이상 읽거나 쓰지 않지만 브라우저 저장소 자체에서 자동 삭제하지는 않는다.
+- 클라이언트가 주문 금액을 생성하므로 실제 결제 서비스 단계에서는 서버 또는 Cloud Functions에서 상품 가격과 총액을 재검증해야 한다.
+
+==================================================
+5-0단계 - 초기 관리자 계정 생성
+작업일: 2026-07-29
+==================================================
+
+1. 기존 구조 확인
+- 프로젝트의 회원 문서 컬렉션은 users이며 userss 컬렉션은 사용하지 않는다.
+- 요청의 userss/{uid] 표기는 기존 프로젝트 구조에 맞춰 users/{uid}로 처리했다.
+- 일반 회원가입은 기존과 동일하게 role: user만 생성한다.
+- 클라이언트 보안 규칙은 일반 사용자의 role: admin 생성과 role 변경을 차단한다.
+
+2. 관리자 생성 결과
+- 요청한 관리자 이메일로 Firebase Authentication 계정을 생성했다.
+- Authentication에서 발급된 uid를 문서 ID로 사용해 users/{uid} 문서를 생성했다.
+- 관리자 문서에는 email, nickname, role, createAt을 저장했다.
+- role은 admin으로 저장되었으며 createAt은 서버 요청 시간을 사용했다.
+- 생성한 계정으로 이메일/비밀번호 로그인을 실행해 정상 인증됨을 확인했다.
+- 로그인한 본인 권한으로 users/{uid} 문서를 조회해 role: admin을 확인했다.
+- 실제 비밀번호와 환경변수 값은 코드 및 이력 파일에 기록하지 않았다.
+
+3. 보안 처리
+- 기존 최종 규칙에서는 role: admin 생성이 차단되므로, 지정된 관리자 이메일 본인만 최초 admin 문서를 생성할 수 있는 제한적인 임시 create 규칙을 적용했다.
+- 관리자 문서 생성 직후 임시 예외를 firestore.rules에서 제거했다.
+- 일반 회원가입에서 role: user만 허용하는 최종 규칙을 다시 컴파일하고 배포했다.
+- 따라서 현재는 다른 사용자뿐 아니라 해당 관리자 계정도 클라이언트에서 role을 변경하거나 새 admin 문서를 생성할 수 없다.
+
+4. 현재 적용된 users 보안 규칙
+match /users/{userId} {
+  allow create: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.keys().hasOnly([
+      'email',
+      'nickname',
+      'role',
+      'createAt'
+    ])
+    && request.resource.data.email == request.auth.token.email
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() >= 2
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.role == 'user'
+    && request.resource.data.createAt == request.time;
+
+  allow read: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'nickname'
+    ])
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() >= 2
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.role == resource.data.role;
+
+  allow delete: if false;
+}
+
+보안 규칙 테스트 항목:
+- 일반 회원가입 사용자의 본인 users 문서 role: user 생성: 허용
+- 일반 사용자의 role: admin 문서 생성: 거부
+- 기존 사용자의 role 변경: 거부
+- 다른 사용자의 users 문서 조회 및 수정: 거부
+- 본인 문서 조회와 nickname만 수정: 허용
+- email, role, createAt 수정 및 문서 삭제: 거부
+
+5. 수정 및 생성 파일
+- 애플리케이션 소스 파일: 수정 없음
+- firestore.rules: 관리자 생성 중 제한적 임시 예외를 사용한 뒤 즉시 제거하여 최종 파일은 일반 사용자용 안전 규칙 유지
+- historyCode.txt: 관리자 생성 과정, 검증 결과, 최종 보안 규칙을 기록하기 위해 수정
+- 새 파일: 생성 없음
+
+6. 기존 기능 유지 및 검사 결과
+- 기존 로그인과 회원가입 코드는 수정하지 않았다.
+- npm run lint: 작업 관련 오류 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있다.
+- npm run build: Vite 프로덕션 빌드 성공
+- 109개 모듈 정상 변환
+- 최종 Firestore 규칙 컴파일 및 배포 성공
+
+==================================================
+5-1단계 - 관리자 권한 설정
+작업일: 2026-07-29
+==================================================
+
+1. 구현 내용
+- Firebase Authentication 로그인 사용자의 uid로 users/{uid} 문서를 조회한다.
+- users/{uid}.role 값이 정확히 admin일 때만 클라이언트의 isAdmin 상태가 true가 된다.
+- 이메일 주소나 프론트엔드 상수로 관리자 여부를 판단하지 않는다.
+- 인증 확인과 role 확인 상태를 분리해 새로고침 시 role 조회가 끝나기 전에 관리자 화면을 표시하지 않는다.
+- role 조회 실패 시 관리자 권한을 허용하지 않는 fail-closed 방식으로 처리한다.
+- 일반 로그인과 회원가입은 기존 흐름을 유지한다.
+- 일반 회원가입은 계속 role: user만 생성한다.
+
+2. 수정 및 추가 파일
+- src/firebase/userApi.js
+  수정 이유: users/{uid} 문서에서 role을 조회하는 getUserRole 함수를 추가했다.
+- src/store/authStore.js
+  수정 이유: role, isRoleLoading, roleError 상태와 갱신 함수를 추가했다.
+- src/hooks/useAuth.js
+  수정 이유: Firebase 인증 복원 후 현재 uid의 Firestore role을 조회하고 isAdmin 값을 제공하도록 수정했다.
+- src/components/AdminRoute.jsx
+  추가 이유: 향후 관리자 페이지를 감쌀 수 있는 관리자 전용 라우트 보호 컴포넌트를 추가했다. 비로그인은 로그인 페이지로 이동하고, 일반 사용자와 role 조회 실패 사용자는 홈으로 이동한다.
+- firestore.rules
+  수정 이유: 서버 보안 규칙에서도 users/{현재 uid}.role == admin을 확인하는 isAdmin 함수를 추가했다. 관리자는 사용자 문서를 읽을 수 있지만 role을 수정할 수는 없다.
+- historyCode.txt
+  수정 이유: 관리자 판정 방식, 변경 파일, 보안 규칙과 검사 결과를 기록했다.
+
+3. Firestore 보안 규칙
+관리자 판정 함수:
+function isAdmin() {
+  return request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+      == 'admin';
+}
+
+사용자 문서 읽기 규칙:
+allow read: if request.auth != null
+  && (request.auth.uid == userId || isAdmin());
+
+사용자 문서 생성 및 수정 제한:
+- create는 본인 uid 문서에 role: user만 허용한다.
+- update는 본인 nickname 필드 변경만 허용한다.
+- role, email, createAt 변경은 허용하지 않는다.
+- delete는 허용하지 않는다.
+- 따라서 관리자 지정은 Firebase Console 또는 신뢰할 수 있는 Admin SDK/관리자 스크립트에서만 수행할 수 있다.
+
+보안 규칙 테스트 항목:
+- role: admin인 로그인 사용자의 isAdmin 판정: true
+- role: user이거나 users 문서가 없는 사용자의 isAdmin 판정: false
+- 비로그인 사용자의 관리자 권한: 거부
+- 관리자의 users 문서 조회: 허용
+- 일반 사용자의 다른 users 문서 조회: 거부
+- 클라이언트 회원가입에서 role: admin 생성: 거부
+- 클라이언트에서 기존 role을 admin 또는 user로 변경: 거부
+
+4. 기존 기능 유지
+- 로그인과 회원가입 API는 수정하지 않았다.
+- 일반 사용자 마이페이지, 장바구니, 찜 목록과 주문 권한은 기존 규칙을 유지한다.
+- 아직 관리자 화면은 생성하지 않았으며 AdminRoute만 다음 단계에서 재사용할 수 있도록 준비했다.
+
+5. 검사 및 배포 결과
+- npm run lint: 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 109개 모듈 정상 변환
+- Firestore 규칙 서버 컴파일 성공
+- 변경된 관리자 권한 규칙 배포 성공
+
+==================================================
+5-2단계 - 관리자 페이지 접근 제한 및 기본 화면
+작업일: 2026-07-29
+==================================================
+
+1. 구현 내용
+- /admin과 /admin 하위 경로를 관리자 전용 경로로 연결했다.
+- AdminRoute가 Firebase 인증 상태와 users/{uid}.role을 모두 확인한다.
+- 비로그인 사용자는 로그인 페이지로 이동한다.
+- role이 admin이 아닌 일반 사용자는 홈으로 이동해 관리자 화면 접근을 차단한다.
+- 인증 또는 role 확인 중에는 관리자 권한 확인 로딩 화면을 표시한다.
+- /admin 기본 화면은 대시보드로 표시한다.
+- Header 관리자 메뉴는 role 확인이 끝난 관리자에게만 표시한다.
+- 관리자 닉네임과 비밀번호 관리는 기존 마이페이지에서 계속 처리한다.
+
+2. 관리자 메뉴와 경로
+- 대시보드: /admin
+- 회원관리: /admin/members
+- 상품관리(재고관리): /admin/products
+- 추천상품 관리: /admin/recommendations
+- 공지사항 관리: /admin/notices
+
+3. 수정 및 추가 파일
+- src/pages/Admin.jsx
+  추가 이유: 관리자 대시보드와 다섯 개 관리 메뉴의 기본 콘텐츠 화면을 구성했다.
+- src/pages/Admin.module.scss
+  추가 이유: 기존 SCSS Module 방식을 유지하면서 좌측 사이드 메뉴와 우측 콘텐츠 레이아웃 및 반응형 스타일을 구현했다.
+- src/App.jsx
+  수정 이유: /admin/* 경로를 AdminRoute로 보호하고 Admin 페이지를 연결했다.
+- src/components/Header.jsx
+  수정 이유: role 확인이 완료된 관리자에게만 관리자 메뉴 링크를 표시한다.
+- historyCode.txt
+  수정 이유: 관리자 화면, 접근 제한, 변경 파일, 보안 규칙과 검사 결과를 기록했다.
+
+4. 접근 흐름
+- 인증 확인 중: "관리자 권한 확인 중입니다..." 표시
+- 비로그인: /login으로 이동하며 원래 접근 경로를 state.from에 저장
+- 로그인했지만 role != admin: 홈으로 이동
+- 로그인했고 users/{uid}.role == admin: 관리자 페이지 표시
+- role 조회 오류: 관리자 권한을 허용하지 않고 홈으로 이동
+
+5. Firestore 보안 규칙
+이번 화면은 이전 단계에서 배포한 아래 서버 규칙을 사용한다.
+
+function isAdmin() {
+  return request.auth != null
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+      == 'admin';
+}
+
+match /users/{userId} {
+  allow read: if request.auth != null
+    && (request.auth.uid == userId || isAdmin());
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'nickname'
+    ])
+    && request.resource.data.role == resource.data.role;
+}
+
+보안 확인 항목:
+- 일반 사용자가 주소창에서 /admin 직접 접근: 차단
+- 비로그인 사용자가 /admin 직접 접근: 로그인 페이지로 이동
+- role 조회가 끝나기 전 관리자 콘텐츠 표시: 차단
+- role: admin 사용자의 /admin 접근: 허용
+- 일반 사용자의 클라이언트 role 변경: Firestore 규칙에서 거부
+- 관리자 지정은 Firebase Console 또는 신뢰할 수 있는 관리자 스크립트에서만 수행
+
+6. 화면 구성
+- 데스크톱: 좌측 고정형 관리 메뉴와 우측 콘텐츠의 2열 레이아웃
+- 모바일: 사이드 메뉴와 콘텐츠가 세로로 배치되는 반응형 레이아웃
+- 대시보드: 회원, 상품, 재고, 공지 요약 카드와 관리 메뉴 바로가기
+- 나머지 메뉴: 다음 데이터 연결 단계에서 재사용할 기본 관리 영역
+- 마이페이지 이동 링크: 관리자 계정의 닉네임과 비밀번호 관리
+
+7. 검사 결과
+- npm run lint: 이번 작업 파일 오류 없이 통과
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있음
+- npm run build: Vite 프로덕션 빌드 성공
+- 112개 모듈 정상 변환
+- 번들 크기 안내 경고는 있으나 빌드 실패가 아님
+
+
+[2026-07-29] 비로그인 찜 접근 제한 및 Firestore 찜 저장 통합
+
+1. 작업 내용
+- /wishlist 경로를 ProtectedRoute로 감싸 로그인 사용자만 접근하도록 제한했다.
+- 인증 확인 전에는 기존 ProtectedRoute 로딩 화면을 표시하고, 비로그인 확인 후 /login으로 이동한다.
+- 상품 카드와 상품 상세의 찜 추가·해제를 localStorage 방식에서 Firestore 방식으로 변경했다.
+- 로그인 사용자가 찜 버튼을 누르면 wishlists/{uid}/items/{productId}에 상품을 저장한다.
+- 비로그인 사용자가 상품의 찜 버튼을 누르면 로그인 페이지로 이동한다.
+- 일반 찜 목록 페이지가 Firestore 찜 데이터를 조회하고 개별 해제 및 전체 삭제하도록 변경했다.
+- 마이페이지 찜 영역과 일반 찜 목록 페이지가 동일한 Firestore 경로를 사용하므로 로그인 후 저장한 상품이 양쪽에 표시된다.
+- 장바구니의 기존 localStorage 기능은 수정하지 않았다.
+
+2. 수정 파일
+- src/App.jsx
+  수정 이유: /wishlist를 ProtectedRoute로 보호하기 위해 수정했다.
+
+- src/firebase/wishlistApi.js
+  수정 이유: 찜 존재 확인, 상품 저장, 개별 삭제, 전체 삭제 기능을 추가하기 위해 수정했다.
+
+- src/components/ProductCard.jsx
+  수정 이유: 로그인 상태 확인과 Firestore 찜 추가·해제를 연결하고 비로그인 사용자를 로그인 페이지로 이동하기 위해 수정했다.
+
+- src/pages/ProductDetail.jsx
+  수정 이유: 상세 상품의 찜 상태 확인과 Firestore 추가·해제를 연결하기 위해 수정했다.
+
+- src/pages/Wishlist.jsx
+  수정 이유: localStorage 조회·저장을 제거하고 로그인 사용자 uid 기준 Firestore 찜 목록 조회·개별 해제·전체 삭제를 연결하기 위해 수정했다.
+
+- firestore.rules
+  수정 이유: 로그인 사용자가 본인 경로에 제한된 필드 구조로 찜 상품을 생성할 수 있도록 create 규칙을 추가하기 위해 수정했다.
+  수정 이유: 기존 본인 읽기·삭제 허용과 수정 차단을 유지하기 위해 수정했다.
+
+- historyCode.txt
+  수정 이유: 접근 제한, Firestore 찜 저장 통합, 보안 규칙과 검증 결과를 기록하기 위해 수정했다.
+
+3. 저장되는 찜 문서
+wishlists/{현재 로그인 사용자 uid}/items/{상품 ID}
+- productId: 상품 ID 문자열
+- image: 상품 이미지 경로
+- name: 상품명
+- price: 할인 적용 가격
+- quantity: 1
+- createAt: serverTimestamp()
+
+4. Firestore 보안 규칙
+적용할 테스트 가능한 규칙 코드:
+match /wishlists/{userId}/items/{itemId} {
+  allow read, delete: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow create: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.keys().hasOnly([
+      'productId',
+      'image',
+      'name',
+      'price',
+      'quantity',
+      'createAt'
+    ])
+    && request.resource.data.productId == itemId
+    && request.resource.data.image is string
+    && request.resource.data.name is string
+    && request.resource.data.price is number
+    && request.resource.data.price >= 0
+    && request.resource.data.quantity == 1
+    && request.resource.data.createAt == request.time;
+
+  allow update: if false;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 본인 uid 경로에 정상 찜 문서 생성: 허용
+- 비로그인 사용자의 찜 문서 생성: 거부
+- 다른 사용자의 uid 경로에 찜 문서 생성: 거부
+- 문서 ID와 productId가 다른 찜 문서 생성: 거부
+- 음수 가격, quantity가 1이 아닌 문서, 임의 createAt 생성: 거부
+- 허용되지 않은 필드를 포함한 문서 생성: 거부
+- 본인 찜 조회·삭제: 허용
+- 다른 사용자의 찜 조회·삭제: 거부
+- 찜 문서 수정: 거부
+
+5. 검증 결과
+- npm run lint: 이번 단계 추가·수정 파일은 오류와 경고 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건만 남아 있다.
+- npm run build: Vite 프로덕션 빌드에 성공했다.
+- 110개 모듈이 정상 변환되었다.
+- 번들 크기 안내는 존재하지만 빌드 실패나 찜 기능 오류는 아니다.
+
+6. Firestore 규칙 배포 결과
+- 변경된 찜 생성 규칙을 현재 환경변수에 연결된 Firebase 프로젝트에 배포했다.
+- 서버 규칙 컴파일, 새 ruleset 업로드 및 cloud.firestore 활성 적용에 성공했다.
+- Firebase CLI 결과: Deploy complete.
+- 환경변수의 실제 값은 이력 문서에 기록하지 않았다.
+
+==================================================
+4-5 추가 작업 - 마이페이지 장바구니 상품 표시 연동
+작업일: 2026-07-29
+==================================================
+
+1. 기존 코드 분석
+- 장바구니 페이지는 localStorage의 cart 데이터를 표시하고 있었다.
+- 마이페이지 장바구니 영역은 Firestore의 carts/{uid}/items 문서를 조회하고 있었다.
+- 상품 카드와 상품 상세에서 장바구니에 담을 때 Firestore 문서를 생성하지 않아, 마이페이지에는 상품이 표시되지 않는 상태였다.
+
+2. 수정 파일과 이유
+- src/firebase/cartApi.js
+  수정 이유: 로그인 사용자의 장바구니 상품을 Firestore에 저장하고, 주문 완료 후 해당 사용자의 장바구니 문서를 일괄 삭제하는 기능을 추가했다.
+- src/components/ProductCard.jsx
+  수정 이유: 로그인 사용자가 상품 카드에서 장바구니에 담으면 Firestore에도 저장되도록 연결했다. 기존 장바구니 페이지 기능 유지를 위해 기존 localStorage 저장도 유지했다.
+- src/pages/ProductDetail.jsx
+  수정 이유: 로그인 사용자가 상품 상세에서 선택한 수량을 Firestore 장바구니에도 저장하도록 연결했다. 기존 장바구니 페이지 기능은 유지했다.
+- src/pages/Cart.jsx
+  수정 이유: 주문이 성공하면 마이페이지에 이미 주문된 상품이 장바구니로 남지 않도록 Firestore 장바구니도 삭제하도록 연결했다.
+- firestore.rules
+  수정 이유: 본인 장바구니에 한해 정해진 필드의 상품 생성과 수량 수정이 가능하도록 보안 규칙을 추가했다. 기존 본인 조회 및 삭제 규칙은 유지했다.
+- historyCode.txt
+  수정 이유: 변경 파일, 구현 방식, 보안 규칙 및 검증 결과를 단계별로 기록했다.
+
+3. 동작 방식
+- 비로그인 사용자는 기존과 동일하게 localStorage 장바구니를 사용한다.
+- 로그인 사용자가 상품을 담으면 Firestore carts/{uid}/items/{productId}에 저장하고, 기존 장바구니 페이지 호환을 위해 localStorage에도 저장한다.
+- 같은 상품을 다시 담으면 Firestore transaction으로 기존 수량에 새 수량을 더한다.
+- 마이페이지는 기존 getUserCart(uid)를 통해 Firestore 장바구니 상품을 표시한다.
+- 주문 저장이 성공하면 Firestore 장바구니와 기존 localStorage 장바구니를 함께 비운다.
+
+4. Firestore 보안 규칙
+적용 및 테스트 가능한 장바구니 규칙 코드:
+match /carts/{userId}/items/{itemId} {
+  allow read, delete: if request.auth != null
+    && request.auth.uid == userId;
+
+  allow create: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.keys().hasOnly([
+      'productId',
+      'image',
+      'name',
+      'price',
+      'quantity'
+    ])
+    && request.resource.data.productId == itemId
+    && request.resource.data.image is string
+    && request.resource.data.name is string
+    && request.resource.data.price is number
+    && request.resource.data.price >= 0
+    && request.resource.data.quantity is number
+    && request.resource.data.quantity > 0;
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'quantity'
+    ])
+    && request.resource.data.quantity is number
+    && request.resource.data.quantity > 0;
+}
+
+보안 규칙 테스트 항목:
+- 로그인 사용자가 본인 uid 경로에 정상 상품 문서 생성: 허용
+- 로그인 사용자가 본인 장바구니 조회 및 개별 삭제: 허용
+- 로그인 사용자가 본인 상품의 quantity만 양수로 수정: 허용
+- 비로그인 사용자의 생성, 조회, 수정, 삭제: 거부
+- 다른 사용자의 uid 경로에 생성, 조회, 수정, 삭제: 거부
+- 문서 ID와 productId가 다르거나 허용하지 않은 필드가 있는 생성: 거부
+- 음수 가격, 0 이하 수량, 잘못된 자료형의 생성: 거부
+- quantity 이외의 상품명, 가격, 이미지 등의 수정: 거부
+
+5. 검증 결과
+- npm run lint: 이번 작업에서 추가 및 수정한 파일은 오류 없이 통과했다.
+- 기존 src/pages/Notice.jsx의 미사용 styles import 경고 1건은 이번 작업 범위 밖의 기존 경고로 남아 있다.
+- npm run build: Vite 프로덕션 빌드가 성공했다.
+- 110개 모듈이 정상 변환되었다.
+- 번들 크기 안내 경고가 있으나 빌드 실패나 장바구니 기능 오류는 아니다.
+
+6. Firestore 규칙 배포 결과
+- 변경된 장바구니 생성 및 수량 수정 규칙을 현재 환경변수에 연결된 Firebase 프로젝트에 배포했다.
+- 서버 규칙 컴파일, ruleset 업로드 및 cloud.firestore 활성 규칙 반영이 모두 성공했다.
+- Firebase CLI 결과: Deploy complete.
+- 환경변수의 실제 값은 이력 문서에 기록하지 않았다.
+============================================================
+재고관리 추가 - 주문 완료 시 상품 재고 차감
+작업일: 2026-07-29
+============================================================
+
+[1단계] 주문 및 상품 재고 처리 구조 점검
+- 장바구니 주문은 src/firebase/orderApi.js의 createOrder를 호출합니다.
+- 주문 성공 후에만 기존 장바구니 문서를 삭제하고 완료 안내를 표시하는 흐름을 유지했습니다.
+- 상품 목록과 상세 화면은 Firestore products 컬렉션을 조회하므로 재조회 시 변경된 재고가 반영됩니다.
+
+[2단계] 주문 생성과 재고 차감 트랜잭션 적용
+- 수정 파일: src/firebase/orderApi.js
+- 수정 이유:
+  주문 문서 생성과 상품 재고 차감을 하나의 Firestore 트랜잭션으로 처리하여
+  일부 상품만 차감되거나 재고가 부족한 주문이 저장되는 문제를 방지하기 위해 수정했습니다.
+- 처리 내용:
+  1. 장바구니의 productId가 기존 products.json ID인 경우에도 legacyId를 통해 현재 Firestore 상품 문서를 찾습니다.
+  2. 주문 수량이 1 이상의 정수인지 확인합니다.
+  3. 주문 대상 상품이 존재하는지 확인합니다.
+  4. 트랜잭션에서 모든 상품 문서를 먼저 조회합니다.
+  5. 상품별 현재 재고가 주문 수량보다 적으면 전체 주문과 재고 변경을 취소합니다.
+  6. 재고가 충분하면 상품별 구매 수량만큼 stock을 차감하고 updateAt에 serverTimestamp()를 저장합니다.
+  7. 같은 트랜잭션에서 orders 문서를 생성합니다.
+  8. 트랜잭션 성공 후 기존 흐름에 따라 장바구니가 삭제되고 주문 완료 안내가 표시됩니다.
+- 추가된 한글 오류:
+  * 주문 수량이 올바르지 않은 경우
+  * 주문할 상품을 찾을 수 없는 경우
+  * 상품 재고가 부족한 경우
+
+[3단계] Firestore 상품 재고 차감 보안 규칙 추가
+- 수정 파일: firestore.rules
+- 수정 이유:
+  로그인 사용자의 주문 트랜잭션에서 상품 재고를 차감할 수 있도록 하되,
+  상품 정보 변경이나 재고 증가 권한은 허용하지 않기 위해 수정했습니다.
+- 관리자 상품 등록/수정/삭제 권한은 기존대로 유지됩니다.
+- 로그인 사용자는 products 문서의 stock과 updateAt만 수정할 수 있습니다.
+- stock은 현재 값보다 작아야 하며 0 이상의 정수여야 합니다.
+- updateAt은 반드시 요청 시각(request.time)이어야 합니다.
+
+[Firebase Console에서 테스트 가능한 보안 규칙 코드]
+match /products/{productId} {
+  allow read: if true;
+  allow create: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == request.time
+    && request.resource.data.updateAt == request.time;
+  allow update: if (
+      isAdmin()
+      && isValidProduct(request.resource.data)
+      && request.resource.data.createAt == resource.data.createAt
+      && request.resource.data.updateAt == request.time
+    )
+    || (
+      request.auth != null
+      && isValidProduct(request.resource.data)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'stock',
+        'updateAt'
+      ])
+      && request.resource.data.createAt == resource.data.createAt
+      && request.resource.data.stock < resource.data.stock
+      && request.resource.data.stock >= 0
+      && request.resource.data.updateAt == request.time
+    );
+  allow delete: if isAdmin();
+}
+
+[보안 규칙 테스트 항목]
+- 관리자 상품 정상 수정: 허용
+- 로그인 사용자가 stock을 감소시키고 updateAt만 서버 시각으로 변경: 허용
+- 비로그인 사용자의 재고 수정: 거부
+- 일반 사용자의 재고 증가: 거부
+- 일반 사용자의 상품명, 가격 등 다른 필드 수정: 거부
+- 재고를 음수 또는 소수로 수정: 거부
+- updateAt을 임의 값으로 수정: 거부
+
+[4단계] 검사 및 배포 결과
+- npm run lint: 통과
+  * 기존 src/pages/Notice/Notice.jsx의 미사용 styles 경고 1건은 유지됩니다.
+- npm run build: 통과
+  * Vite 번들 크기 안내 경고만 있으며 빌드는 정상 완료되었습니다.
+- Firebase Firestore 보안 규칙 배포: 완료
+  * 규칙 컴파일 및 ruleset release가 정상 완료되었습니다.
+- 환경변수의 실제 값은 기록하거나 수정하지 않았습니다.
+
+[수정/추가 파일]
+- src/firebase/orderApi.js
+  주문 생성과 상품 재고 차감을 원자적으로 처리하도록 수정했습니다.
+- firestore.rules
+  로그인 사용자의 제한된 재고 차감 권한을 추가했습니다.
+- historyCode.txt
+  작업 단계, 규칙 코드, 검사 및 배포 결과를 기록했습니다.
+
+[주의 사항]
+- 상품 목록, 상세, 관리자 상품 목록은 Firestore를 다시 조회할 때 차감된 재고를 표시합니다.
+- 현재 구조는 로그인한 클라이언트가 제한된 범위에서 재고 감소 요청을 할 수 있습니다.
+  결제와 연결되는 실제 운영 환경에서는 악의적인 재고 감소 요청을 방지하기 위해
+  주문 생성과 재고 차감을 Cloud Functions 또는 Admin SDK 기반의 신뢰할 수 있는 서버에서
+  처리하는 방식을 권장합니다.
+============================================================
+5-5단계 관리자 페이지 추천상품 관리 및 재고 반영 점검
+작업일: 2026-07-29
+============================================================
+
+[1단계] 주문 재고 처리 점검
+- 확인 파일: src/firebase/orderApi.js, src/pages/Cart.jsx
+- 주문 문서 생성과 상품별 재고 차감은 동일한 Firestore 트랜잭션에서 처리됩니다.
+- 상품이 없거나 주문 수량이 잘못되었거나 재고가 부족하면 트랜잭션 전체가 취소됩니다.
+- 따라서 주문 실패 시 주문 문서가 생성되지 않고 어떤 상품 재고도 차감되지 않습니다.
+- 주문 성공 시에만 장바구니를 비우고 주문 완료 안내와 마이페이지 이동을 처리합니다.
+- 상품 목록과 상세 화면은 Firestore products 문서를 새로 조회하므로 화면 이동 또는 재조회 시
+  차감된 stock과 품절 상태가 즉시 반영됩니다.
+
+[2단계] 추천상품 최대 4개 제한
+- 수정 파일: src/firebase/adminApi.js
+- 수정 이유:
+  추천 버튼뿐 아니라 상품 등록과 상품 수정에서 isRecommended를 선택하는 경우에도
+  추천상품이 4개를 초과하지 않도록 공통 검사를 적용하기 위해 수정했습니다.
+- Firestore에서 isRecommended == true인 상품 수를 확인합니다.
+- 이미 추천상품이 4개이면 recommended-product-limit 오류를 발생시킵니다.
+- 오류는 '추천상품은 최대 4개까지만 설정할 수 있습니다.'라는 한글 문구로 표시합니다.
+
+- 수정 파일: src/components/AdminProducts.jsx
+- 수정 이유:
+  관리자에게 추천상품 수와 제한 초과 이유를 즉시 안내하기 위해 수정했습니다.
+- 추천 버튼, 상품 등록, 상품 수정 단계에서 현재 추천상품 수를 먼저 확인합니다.
+- 관리자 상품 목록 상단에 '추천 현재 개수/4 · 전체 상품 개수'를 표시합니다.
+- isRecommended 값은 기존 상품 필드를 그대로 사용합니다.
+
+[3단계] 관리자 추천 메뉴와 홈 추천상품 연결
+- 수정 파일: src/pages/Admin.jsx
+- 수정 이유:
+  '추천상품 관리' 메뉴 클릭 시 별도 준비 화면이 아니라 기존 상품 관리 화면으로 이동하도록
+  경로를 /admin/products로 연결했습니다.
+
+- 수정 파일: src/pages/Home.jsx
+- 수정 이유:
+  홈의 추천 영역에는 isRecommended가 true인 상품만 최대 4개 표시하도록 수정했습니다.
+- getRecommendedProducts()의 기존 Firestore 조회 구조와 SCSS Module 디자인은 유지했습니다.
+
+[Firebase 보안 규칙 확인]
+- 이번 단계에서 firestore.rules 파일은 변경하지 않았습니다.
+- 기존 규칙상 products 생성, 일반 수정, 삭제는 isAdmin()만 허용하므로
+  isRecommended 변경 역시 관리자만 가능합니다.
+- 주문 시 일반 사용자는 stock과 updateAt만 변경할 수 있어 isRecommended는 변경할 수 없습니다.
+
+[Firebase Console에서 확인할 관련 보안 규칙 코드]
+match /products/{productId} {
+  allow read: if true;
+  allow create: if isAdmin()
+    && isValidProduct(request.resource.data)
+    && request.resource.data.createAt == request.time
+    && request.resource.data.updateAt == request.time;
+  allow update: if (
+      isAdmin()
+      && isValidProduct(request.resource.data)
+      && request.resource.data.createAt == resource.data.createAt
+      && request.resource.data.updateAt == request.time
+    )
+    || (
+      request.auth != null
+      && isValidProduct(request.resource.data)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'stock',
+        'updateAt'
+      ])
+      && request.resource.data.createAt == resource.data.createAt
+      && request.resource.data.stock < resource.data.stock
+      && request.resource.data.stock >= 0
+      && request.resource.data.updateAt == request.time
+    );
+  allow delete: if isAdmin();
+}
+
+[보안 규칙 테스트 항목]
+- 관리자의 isRecommended 변경: 허용
+- 일반 사용자의 isRecommended 변경: 거부
+- 비로그인 사용자의 isRecommended 변경: 거부
+- 주문 트랜잭션의 stock 감소와 updateAt 변경: 허용
+- 주문 트랜잭션에서 isRecommended 등 다른 상품 필드 변경: 거부
+
+[4단계] 검사 결과
+- npm run lint: 통과
+  * 기존 src/pages/Notice.jsx의 미사용 styles 경고 1건은 유지됩니다.
+- npm run build: 통과
+  * 116개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- git diff --check: 통과
+- 환경변수 실제 값은 작성하거나 기록하지 않았습니다.
+
+[수정 파일]
+- src/firebase/adminApi.js
+  추천상품 최대 4개 공통 검사와 한글 오류를 추가했습니다.
+- src/components/AdminProducts.jsx
+  추천 개수 표시와 등록·수정·추천 버튼의 사전 제한을 추가했습니다.
+- src/pages/Admin.jsx
+  추천상품 관리 메뉴를 /admin/products에 연결했습니다.
+- src/pages/Home.jsx
+  홈 추천상품 표시를 최대 4개로 제한했습니다.
+- historyCode.txt
+  작업 단계, 보안 규칙 확인 코드와 검사 결과를 기록했습니다.
+
+[주의 사항]
+- 추천상품 최대 4개 검사는 관리자 화면과 Firebase API 호출 코드에서 적용됩니다.
+- Firestore Security Rules는 컬렉션 전체의 추천상품 개수를 집계할 수 없으므로
+  '관리자만 isRecommended 변경 가능' 권한을 서버 규칙으로 보장하고,
+  4개 개수 제한은 관리자 애플리케이션 로직에서 보장합니다.
+- 기존 Firestore 데이터에 이미 추천상품이 4개보다 많이 저장되어 있다면
+  관리자 상품관리 화면에서 초과 상품을 추천 해제해야 합니다.
+============================================================
+5-6단계 관리자 페이지 공지사항 작성·수정·삭제
+작업일: 2026-07-29
+============================================================
+
+[1단계] 기존 코드 분석
+- 기존 /notice와 /notice/:id Router 경로는 있었지만 목록과 상세 컴포넌트가 비어 있었습니다.
+- 기존 src/firebase/noticeApi.js와 공지 SCSS Module 파일도 비어 있었습니다.
+- 관리자 /admin/* 경로 전체는 기존 AdminRoute에서 로그인 및 users/{uid}.role == admin을
+  확인하고 있어 /admin/notices도 관리자 권한 검사를 거칩니다.
+
+[2단계] Firestore 공지사항 API 구현
+- 수정 파일: src/firebase/noticeApi.js
+- 구현 기능:
+  * notices 컬렉션을 createAt 내림차순으로 조회
+  * notices/{noticeId} 상세 조회
+  * title, content, authorUid, createAt, updateAt을 사용한 공지 등록
+  * title, content 수정과 updateAt serverTimestamp() 저장
+  * 공지 삭제
+  * 한국 날짜 형식 변환
+  * 권한 및 서비스 오류의 한글 메시지 처리
+
+[3단계] 공개 공지 목록과 상세 구현
+- 수정 파일: src/pages/Notice.jsx, src/pages/Notice.module.scss
+- /notice에서 누구나 최신순 목록을 조회할 수 있습니다.
+- 로딩, 빈 목록, 조회 오류를 각각 표시합니다.
+
+- 수정 파일: src/pages/NoticeDetail.jsx, src/pages/NoticeDetail.module.scss
+- /notice/:id에서 공지 제목, 내용, 등록일을 표시합니다.
+- 존재하지 않는 문서, 로딩, 조회 오류를 처리하고 목록 이동 링크를 제공합니다.
+- 기존 React 컴포넌트와 SCSS Module 작성 방식을 유지했습니다.
+
+[4단계] 관리자 공지 관리 구현
+- 생성 파일: src/components/AdminNotices.jsx
+- 생성 이유:
+  기존 Admin 페이지 구조를 유지하면서 공지 작성·수정·삭제 상태와 화면을 독립적으로
+  관리하기 위해 관리자 공지 컴포넌트를 추가했습니다.
+- 관리자만 /admin/notices에 접근할 수 있습니다.
+- 새 공지 작성 시 현재 관리자 uid를 authorUid로 저장합니다.
+- 수정 버튼을 누르면 기존 제목과 내용이 작성 폼에 표시됩니다.
+- 수정 시 updateAt을 serverTimestamp()로 저장합니다.
+- 삭제 전 confirm 확인 창을 표시합니다.
+- 작성·수정 후 Firestore 목록을 다시 조회하고, 삭제 후에는 목록 상태를 즉시 갱신합니다.
+- 모든 처리 오류를 관리자 공지 영역에 한글로 표시합니다.
+
+- 수정 파일: src/pages/Admin.jsx, src/pages/Admin.module.scss
+- 공지사항 관리 메뉴에 AdminNotices를 연결하고 기존 좌측 메뉴/우측 콘텐츠 디자인을 유지했습니다.
+
+[5단계] Firestore 보안 규칙
+- 수정 파일: firestore.rules
+- 누구나 notices 문서를 조회할 수 있습니다.
+- users/{uid}.role == admin인 관리자만 작성·수정·삭제할 수 있습니다.
+- 작성자는 로그인한 관리자 uid와 같아야 합니다.
+- 수정 시 authorUid와 createAt은 변경할 수 없고 title, content, updateAt만 변경할 수 있습니다.
+- createAt과 updateAt은 서버 요청 시각을 사용합니다.
+
+[Firebase Console에서 테스트 가능한 보안 규칙 코드]
+match /notices/{noticeId} {
+  allow read: if true;
+
+  allow create: if isAdmin()
+    && request.resource.data.keys().hasOnly([
+      'title',
+      'content',
+      'authorUid',
+      'createAt',
+      'updateAt'
+    ])
+    && request.resource.data.title is string
+    && request.resource.data.title.size() > 0
+    && request.resource.data.title.size() <= 100
+    && request.resource.data.content is string
+    && request.resource.data.content.size() > 0
+    && request.resource.data.authorUid == request.auth.uid
+    && request.resource.data.createAt == request.time
+    && request.resource.data.updateAt == request.time;
+
+  allow update: if isAdmin()
+    && request.resource.data.keys().hasOnly([
+      'title',
+      'content',
+      'authorUid',
+      'createAt',
+      'updateAt'
+    ])
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'title',
+      'content',
+      'updateAt'
+    ])
+    && request.resource.data.title is string
+    && request.resource.data.title.size() > 0
+    && request.resource.data.title.size() <= 100
+    && request.resource.data.content is string
+    && request.resource.data.content.size() > 0
+    && request.resource.data.authorUid == resource.data.authorUid
+    && request.resource.data.createAt == resource.data.createAt
+    && request.resource.data.updateAt == request.time;
+
+  allow delete: if isAdmin();
+}
+
+[보안 규칙 테스트 항목]
+- 비로그인 사용자의 공지 목록 및 상세 조회: 허용
+- 일반 로그인 사용자의 공지 목록 및 상세 조회: 허용
+- 관리자의 공지 작성·수정·삭제: 허용
+- 일반 사용자 및 비로그인 사용자의 공지 작성·수정·삭제: 거부
+- 관리자가 수정 중 authorUid 또는 createAt 변경: 거부
+- 임의 createAt 또는 updateAt 저장: 거부
+
+[6단계] 검사 및 배포 결과
+- npm run lint: 통과
+- npm run build: 통과
+  * 119개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- git diff --check: 통과
+- Firestore 보안 규칙 컴파일 및 배포: 완료
+- 환경변수 실제 값은 파일이나 작업 이력에 작성하지 않았습니다.
+
+[수정·생성 파일]
+- src/firebase/noticeApi.js: 공지 Firestore CRUD API 구현
+- src/pages/Notice.jsx: 공개 공지 목록 구현
+- src/pages/Notice.module.scss: 공개 목록 스타일 구현
+- src/pages/NoticeDetail.jsx: 공개 공지 상세 구현
+- src/pages/NoticeDetail.module.scss: 공개 상세 스타일 구현
+- src/components/AdminNotices.jsx: 관리자 작성·수정·삭제 화면 생성
+- src/pages/Admin.jsx: 관리자 공지 메뉴 콘텐츠 연결
+- src/pages/Admin.module.scss: 관리자 공지 화면 스타일 추가
+- firestore.rules: 공개 조회와 관리자 쓰기 권한 추가
+- historyCode.txt: 작업 단계와 보안 규칙 및 검사 결과 기록
+============================================================
+5-7단계 기존 Firestore 보안 규칙 보완
+작업일: 2026-07-29
+============================================================
+
+[1단계] 기존 규칙 감사
+- 기존 products, users, notices, carts, wishlists, orders 규칙을 삭제하지 않고 전체 점검했습니다.
+- isAdmin()은 로그인 사용자의 users/{uid}.role == admin 여부를 확인합니다.
+- 상품 등록·일반 수정·삭제와 isRecommended 변경은 관리자만 가능합니다.
+- 기존 주문 기능을 유지하기 위해 로그인 사용자는 주문 트랜잭션에서 stock 감소와
+  updateAt 변경만 가능하며 다른 상품 필드는 변경할 수 없습니다.
+- 공지는 누구나 읽을 수 있고 관리자만 작성·수정·삭제할 수 있습니다.
+- 사용자는 자신의 nickname만 수정할 수 있으므로 role 변경이 금지됩니다.
+- carts, wishlists는 경로의 userId가 로그인 uid와 같은 경우만 접근할 수 있습니다.
+- orders는 문서의 userId가 로그인 uid와 같은 경우만 읽고 본인 주문만 생성할 수 있습니다.
+
+[2단계] users 조회 권한 명확화
+- 수정 파일: firestore.rules
+- 수정 이유:
+  일반 사용자의 본인 문서 단건 조회와 관리자의 전체 회원 목록 조회 권한을
+  Firestore의 get/list 권한으로 명확하게 구분하기 위해 보완했습니다.
+
+[수정된 보안 규칙 코드]
+match /users/{userId} {
+  allow create: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.keys().hasOnly([
+      'email',
+      'nickname',
+      'role',
+      'createAt'
+    ])
+    && request.resource.data.email == request.auth.token.email
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() >= 2
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.role == 'user'
+    && request.resource.data.createAt == request.time;
+
+  allow get: if request.auth != null
+    && (request.auth.uid == userId || isAdmin());
+
+  allow list: if isAdmin();
+
+  allow update: if request.auth != null
+    && request.auth.uid == userId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'nickname'
+    ])
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() >= 2
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.role == resource.data.role;
+
+  allow delete: if false;
+}
+
+[보안 규칙 테스트 항목]
+- 관리자 users 전체 목록 조회: 허용
+- 일반 사용자 본인 users 문서 단건 조회: 허용
+- 일반 사용자 users 전체 목록 조회: 거부
+- 일반 사용자 다른 users 문서 조회: 거부
+- 사용자 nickname 수정: 허용
+- 사용자 role, email, createAt 수정: 거부
+- 관리자 상품 등록·수정·삭제 및 isRecommended 변경: 허용
+- 일반 사용자의 상품 정보와 isRecommended 변경: 거부
+- 주문 트랜잭션의 제한된 stock 감소: 허용
+- 공지 공개 조회: 허용
+- 관리자 공지 작성·수정·삭제: 허용
+- 일반 사용자 및 비회원 공지 작성·수정·삭제: 거부
+- 다른 사용자의 cart, wishlist, orders 접근: 거부
+
+[3단계] 검사 및 적용 결과
+- npm run build: 통과
+  * 119개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- Firestore 보안 규칙 컴파일: 통과
+- Firestore 보안 규칙 실제 배포: 완료
+- Firebase Console에 붙여 넣을 수 있는 전체 규칙은 firestore.rules에 저장되어 있습니다.
+- 환경변수 실제 값은 파일이나 작업 이력에 작성하지 않았습니다.
+
+[수정 파일]
+- firestore.rules
+  users 문서의 단건 조회(get)와 관리자 전체 조회(list)를 명확하게 분리했습니다.
+- historyCode.txt
+  규칙 감사 결과, 수정 코드, 테스트 항목과 배포 결과를 기록했습니다.
+============================================================
+5-8단계 관리자 페이지 대시보드 Firestore 집계 연결
+작업일: 2026-07-29
+============================================================
+
+[1단계] 기존 구조 분석
+- 기존 관리자 대시보드는 전체 회원, 등록 상품, 재고 확인 필요, 등록 공지 카드가 있었지만
+  값은 모두 '-'로 고정되어 있었습니다.
+- 기존 관리자 레이아웃과 SCSS Module 카드 디자인을 유지했습니다.
+- 재고 부족 기준은 기존 관리자 상품관리 화면과 동일한 5개 이하를 사용했습니다.
+
+[2단계] Firestore 집계 API 구현
+- 수정 파일: src/firebase/adminApi.js
+- 수정 이유:
+  대시보드에 필요한 문서 개수를 효율적으로 조회하기 위해 Firestore getCountFromServer() 기반
+  집계 API를 기존 관리자 API에 추가했습니다.
+- 집계 항목:
+  * users 전체 문서 수
+  * products 전체 문서 수
+  * products 중 stock <= 5인 품절 또는 재고 부족 상품 수
+  * notices 전체 문서 수
+- 네 집계를 Promise.all()로 동시에 요청합니다.
+- 관리자 권한 및 서비스 오류를 한글 메시지로 처리합니다.
+
+[3단계] 관리자 대시보드 화면 연결
+- 생성 파일: src/components/AdminDashboard.jsx
+- 생성 이유:
+  대시보드 집계의 로딩, 성공, 오류 상태를 기존 Admin 페이지와 분리해 관리하기 위해
+  전용 컴포넌트를 생성했습니다.
+- 전체 회원 수, 등록 상품 개수, 품절·재고 부족 상품 개수, 등록 공지 개수를 표시합니다.
+- 숫자는 한국식 천 단위 구분 형식으로 표시합니다.
+- 집계 조회 중에는 로딩 문구를 표시하고 실패 시 한글 오류 메시지를 표시합니다.
+
+- 수정 파일: src/pages/Admin.jsx
+- 정적 DASHBOARD_CARDS를 제거하고 기존 대시보드 위치에 AdminDashboard를 연결했습니다.
+- 기존 관리자 메뉴와 빠른 메뉴 영역은 유지했습니다.
+
+- 수정 파일: src/pages/Admin.module.scss
+- 기존 카드 디자인을 유지하고 대시보드 로딩·오류 상태 스타일만 추가했습니다.
+
+[Firestore 보안 규칙 확인]
+- 이번 단계에서 firestore.rules는 수정하지 않았습니다.
+- users 전체 집계는 기존 allow list: if isAdmin() 규칙에 따라 관리자만 가능합니다.
+- products와 notices는 기존 공개 읽기 규칙을 사용합니다.
+- 대시보드 자체는 기존 AdminRoute에서 관리자 권한을 확인한 후 표시됩니다.
+
+[Firebase Console에서 확인할 관련 보안 규칙 코드]
+match /users/{userId} {
+  allow get: if request.auth != null
+    && (request.auth.uid == userId || isAdmin());
+  allow list: if isAdmin();
+}
+
+match /products/{productId} {
+  allow read: if true;
+}
+
+match /notices/{noticeId} {
+  allow read: if true;
+}
+
+[보안 규칙 테스트 항목]
+- 관리자의 users 전체 count 집계: 허용
+- 일반 사용자와 비로그인 사용자의 users 전체 count 집계: 거부
+- products 전체 및 stock <= 5 count 집계: 허용
+- notices 전체 count 집계: 허용
+- 비관리자의 /admin 접근: 기존 AdminRoute에서 차단
+
+[4단계] 검사 결과
+- npm run lint: 통과
+- npm run build: 통과
+  * 120개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- 환경변수 실제 값은 작성하거나 기록하지 않았습니다.
+
+[수정·생성 파일]
+- src/firebase/adminApi.js: 대시보드 집계 API와 오류 메시지 추가
+- src/components/AdminDashboard.jsx: 대시보드 데이터 표시 컴포넌트 생성
+- src/pages/Admin.jsx: 정적 카드 대신 집계 컴포넌트 연결
+- src/pages/Admin.module.scss: 로딩·오류 상태 스타일 추가
+- historyCode.txt: 작업 단계, 관련 보안 규칙과 검사 결과 기록
+============================================================
+상세페이지 바로 구매 확인 및 주문 연결
+작업일: 2026-07-29
+============================================================
+
+[1단계] 기존 코드 분석
+- 상세페이지의 '바로 구매' 버튼은 화면에만 있고 클릭 이벤트가 연결되어 있지 않았습니다.
+- 기존 src/firebase/orderApi.js의 createOrder는 주문 생성과 재고 차감을 하나의
+  Firestore 트랜잭션으로 처리하고 있어 해당 API를 재사용했습니다.
+- 기존 SCSS Module 구조와 버튼 디자인은 변경하지 않았습니다.
+
+[2단계] 바로 구매 기능 구현
+- 수정 파일: src/pages/ProductDetail.jsx
+- 수정 이유:
+  바로 구매 클릭 시 구매 내용을 확인하고 확인한 경우에만 실제 주문을 처리하기 위해 수정했습니다.
+- 처리 내용:
+  * 비로그인 사용자는 로그인 페이지로 이동
+  * 품절 상품은 구매 차단
+  * 상품명, 수량, 배송비 포함 결제금액을 window.confirm()으로 표시
+  * 확인을 누른 경우에만 createOrder() 실행
+  * 취소를 누르면 주문 및 재고 변경 없음
+  * 주문 중 버튼을 비활성화하고 '주문 중...'을 표시해 중복 주문 방지
+  * 주문 성공 시 완료 안내 후 마이페이지 주문 내역으로 이동
+  * 주문 실패 시 기존 한글 주문 오류 메시지 표시
+- 배송비는 기존 장바구니와 동일하게 50,000원 미만 3,000원, 이상 무료로 계산합니다.
+
+[주문 실패 및 재고 처리]
+- createOrder()는 주문 문서 생성과 재고 차감을 동일한 트랜잭션으로 처리합니다.
+- 재고 부족, 상품 없음, 권한 오류 등으로 주문이 실패하면 재고도 차감되지 않습니다.
+- 주문 성공 시에만 선택한 구매 수량만큼 상품 재고가 차감됩니다.
+
+[Firestore 보안 규칙 확인]
+- 이번 작업에서 firestore.rules는 변경하지 않았습니다.
+- 기존 주문 생성 규칙과 로그인 사용자의 stock 감소 전용 규칙을 그대로 사용합니다.
+
+[Firebase Console에서 확인할 관련 보안 규칙 코드]
+match /orders/{orderId} {
+  allow read: if request.auth != null
+    && resource.data.userId == request.auth.uid;
+  allow create: if request.auth != null
+    && request.resource.data.userId == request.auth.uid
+    && request.resource.data.createAt == request.time;
+  allow update, delete: if false;
+}
+
+[검사 결과]
+- npm run lint: 통과
+- npm run build: 통과
+  * 120개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- git diff --check: 통과
+- 환경변수 실제 값은 작성하거나 기록하지 않았습니다.
+
+[수정 파일]
+- src/pages/ProductDetail.jsx
+  바로 구매 확인창, 주문 처리, 중복 클릭 방지 및 한글 오류 처리를 연결했습니다.
+- historyCode.txt
+  작업 단계, 주문 실패 시 재고 처리, 관련 보안 규칙과 검사 결과를 기록했습니다.
+============================================================
+상세페이지 바로 구매 팝업 SCSS Module 디자인 적용
+작업일: 2026-07-29
+============================================================
+
+[1단계] 기존 구조 분석
+- 바로 구매 확인은 브라우저 기본 window.confirm()을 사용하고 있어 프로젝트 디자인을
+  적용할 수 없는 상태였습니다.
+- 기존 상세페이지에는 장바구니 완료 화면에서 사용하는 공통 Modal 컴포넌트가 이미 연결되어 있어
+  새 모달 컴포넌트를 만들지 않고 기존 Modal을 재사용했습니다.
+
+[2단계] 커스텀 구매 확인 모달 구현
+- 수정 파일: src/pages/ProductDetail.jsx
+- 수정 이유:
+  브라우저 기본 확인창을 기존 React 컴포넌트와 SCSS Module 방식의 팝업으로 변경하기 위해
+  수정했습니다.
+- 바로 구매 클릭 시 isBuyModalOpen 상태로 공통 Modal을 표시합니다.
+- 팝업 표시 항목:
+  * 상품 이미지
+  * 카테고리
+  * 상품명
+  * 상품 단가와 구매 수량
+  * 상품 금액
+  * 배송비
+  * 총 결제금액
+  * 주문 및 재고 차감 안내
+- 취소 버튼, 닫기 버튼, 바깥 영역 클릭, ESC 키로 팝업을 닫을 수 있습니다.
+- 구매하기 버튼을 눌렀을 때만 기존 createOrder()를 실행합니다.
+- 주문 처리 중에는 팝업 닫기와 버튼을 비활성화하고 중복 실행을 차단합니다.
+- 주문 성공·실패와 재고 트랜잭션 흐름은 기존 기능을 유지했습니다.
+
+[3단계] 구매 확인 팝업 스타일 적용
+- 수정 파일: src/pages/ProductDetail.module.scss
+- 수정 이유:
+  기존 상세페이지 디자인과 어울리는 구매 확인 화면을 구성하기 위해 SCSS Module 스타일을
+  추가했습니다.
+- 상품 정보 카드, 금액 명세, 총 결제금액 강조, 안내 문구, 취소·구매 버튼을 스타일링했습니다.
+- 기존 공통 Modal의 반응형 너비와 배경 흐림 효과를 유지했습니다.
+
+[Firestore 보안 규칙 확인]
+- 화면과 스타일 변경이므로 firestore.rules는 수정하지 않았습니다.
+- 구매하기 버튼은 기존 주문 트랜잭션과 기존 보안 규칙을 그대로 사용합니다.
+- 취소 또는 주문 실패 시 주문 문서와 상품 재고는 변경되지 않습니다.
+
+[검사 결과]
+- npm run lint: 통과
+- npm run build: 통과
+  * 120개 모듈 변환 및 production build 완료
+  * 기존 번들 크기 안내 경고만 있습니다.
+- git diff --check: 통과
+- 환경변수 실제 값은 작성하거나 기록하지 않았습니다.
+
+[수정 파일]
+- src/pages/ProductDetail.jsx
+  window.confirm을 공통 Modal 기반 구매 확인 팝업으로 교체했습니다.
+- src/pages/ProductDetail.module.scss
+  구매 상품, 금액 정보와 버튼을 위한 SCSS Module 스타일을 추가했습니다.
+- historyCode.txt
+  작업 단계와 검사 결과를 기록했습니다.

@@ -8,6 +8,8 @@ const OrderSummary = ({
   remainingForFreeDelivery,
   deliveryMinimum,
   onOrder,
+  isOrdering = false,
+  orderError = '',
 }) => {
   const progress = Math.min((subtotal / deliveryMinimum) * 100, 100)
 
@@ -41,8 +43,9 @@ const OrderSummary = ({
         </p>
       </div>
 
-      <button type='button' onClick={onOrder}>
-        {cartItemLabel(totalPrice)} 주문하기
+      {orderError && <p className={styles.orderError} role='alert'>{orderError}</p>}
+      <button type='button' onClick={onOrder} disabled={isOrdering}>
+        {isOrdering ? '주문 처리 중...' : `${cartItemLabel(totalPrice)} 주문하기`}
       </button>
       <p className={styles.helper}>배송비는 주문 단계에서 최종 확인됩니다.</p>
     </aside>

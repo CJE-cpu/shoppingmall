@@ -59,6 +59,23 @@
   margin: 0;
   accent-color: #ee5a41;
 }
+.moreButton {
+  width: 100%;
+  margin-top: 5px;
+  padding: 10px 12px;
+  border: 1px solid #e6dfd9;
+  border-radius: 8px;
+  color: #766d67;
+  background: #faf8f6;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.moreButton:hover {
+  border-color: #e9a89a;
+  color: #df573f;
+  background: #fff6f3;
+}
 @media (max-width: 800px) {
   .filter {
     position: static;
@@ -67,6 +84,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .filter legend {
+    grid-column: 1 / -1;
+  }
+  .moreButton {
     grid-column: 1 / -1;
   }
 }

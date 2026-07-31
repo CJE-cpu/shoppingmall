@@ -1,9 +1,9 @@
 .card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
   min-width: 0;
   transition: transform 220ms ease;
-}
-.card:hover {
-  transform: translateY(-3px);
 }
 .visual {
   position: relative;
@@ -122,6 +122,9 @@
   transform: scale(0.9);
 }
 .info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 16px 2px 0;
 }
 .brand {
@@ -147,6 +150,7 @@
 }
 .meta {
   display: flex;
+  min-height: 16px;
   gap: 10px;
   margin: 8px 0 7px;
   color: #a0968f;
@@ -162,7 +166,9 @@
 }
 .priceRow {
   display: flex;
+  min-height: 42px;
   align-items: baseline;
+  align-content: flex-start;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 9px;
@@ -201,6 +207,25 @@
 }
 .cartButton:active {
   transform: translateY(0);
+}
+.cartButton:disabled {
+  border-color: #c9c3bd;
+  background: #ece9e6;
+  color: #8e8781;
+  cursor: not-allowed;
+  transform: none;
+}
+.soldOutBadge {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 54px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #2c2723;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
 }
 .cartConfirmation {
   margin-top: 22px;
@@ -279,6 +304,7 @@
     font-size: 13px;
   }
   .meta {
+    min-height: 13px;
     gap: 5px;
     font-size: 9px;
   }
@@ -286,6 +312,7 @@
     font-size: 14px;
   }
   .priceRow {
+    min-height: 36px;
     gap: 4px;
     margin-top: 6px;
   }

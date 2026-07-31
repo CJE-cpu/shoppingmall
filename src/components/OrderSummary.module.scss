@@ -49,9 +49,14 @@
     font-weight: 800;
     transition: background 0.2s ease, transform 0.2s ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: #df4b2d;
       transform: translateY(-2px);
+    }
+
+    &:disabled {
+      cursor: wait;
+      opacity: 0.65;
     }
   }
 }
@@ -107,6 +112,16 @@
   color: #92938c;
   font-size: 11px;
   text-align: center;
+}
+
+.orderError {
+  margin-top: 18px;
+  padding: 11px 12px;
+  border-left: 3px solid #df4b2d;
+  background: #fff0ed;
+  color: #a63220;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 960px) {

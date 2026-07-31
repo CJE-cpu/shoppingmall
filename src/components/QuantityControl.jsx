@@ -1,7 +1,12 @@
 import React from 'react'
 import styles from './QuantityControl.module.scss'
 
-const QuantityControl = ({ quantity, setQuantity, maxQuantity }) => {
+const QuantityControl = ({
+  quantity,
+  setQuantity,
+  maxQuantity,
+  disabled = false,
+}) => {
   const decreaseQuantity = () => {
     if (quantity > 1) setQuantity(quantity - 1)
   }
@@ -15,7 +20,7 @@ const QuantityControl = ({ quantity, setQuantity, maxQuantity }) => {
       <button
         type='button'
         onClick={decreaseQuantity}
-        disabled={quantity === 1}
+        disabled={disabled || quantity === 1}
         aria-label='수량 줄이기'
       >
         −
@@ -24,7 +29,7 @@ const QuantityControl = ({ quantity, setQuantity, maxQuantity }) => {
       <button
         type='button'
         onClick={increaseQuantity}
-        disabled={quantity === maxQuantity}
+        disabled={disabled || quantity === maxQuantity}
         aria-label='수량 늘리기'
       >
         +

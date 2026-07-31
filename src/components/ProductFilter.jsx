@@ -1,13 +1,24 @@
-import React from 'react'
+import React, { useState } from 'react'
 import styles from './ProductFilter.module.scss'
 
+const DEFAULT_BRAND_COUNT = 6
+
 const ProductFilter = ({ brands = [], brandOptions = [], priceRange = 'all', onBrandsChange, onPriceChange, onReset }) => {
+  const [isBrandExpanded, setIsBrandExpanded] = useState(false)
+
   const toggleBrand = (brand) => {
     const nextBrands = brands.includes(brand)
       ? brands.filter((item) => item !== brand)
       : [...brands, brand]
     onBrandsChange(nextBrands)
   }
+
+  const visibleBrands = isBrandExpanded
+    ? brandOptions
+    : brandOptions.filter((brand, index) => (
+        index < DEFAULT_BRAND_COUNT || brands.includes(brand)
+      ))
+  const hiddenBrandCount = brandOptions.length - DEFAULT_BRAND_COUNT
 
   return (
     <div className={styles.filter}>
@@ -18,12 +29,22 @@ const ProductFilter = ({ brands = [], brandOptions = [], priceRange = 'all', onB
       {brandOptions.length > 0 && (
         <fieldset>
           <legend>브랜드</legend>
-          {brandOptions.map((brand) => (
-          <label key={brand}>
-            <input type='checkbox' checked={brands.includes(brand)} onChange={() => toggleBrand(brand)} />
-            <span>{brand}</span>
-          </label>
+          {visibleBrands.map((brand) => (
+            <label key={brand}>
+              <input type='checkbox' checked={brands.includes(brand)} onChange={() => toggleBrand(brand)} />
+              <span>{brand}</span>
+            </label>
           ))}
+          {hiddenBrandCount > 0 && (
+            <button
+              className={styles.moreButton}
+              type='button'
+              onClick={() => setIsBrandExpanded((current) => !current)}
+              aria-expanded={isBrandExpanded}
+            >
+              {isBrandExpanded ? '브랜드 접기' : `브랜드 더보기 +${hiddenBrandCount}`}
+            </button>
+          )}
         </fieldset>
       )}
       <fieldset>

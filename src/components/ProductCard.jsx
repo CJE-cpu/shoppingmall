@@ -1,51 +1,91 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { loadlocal, savelocal } from '../utils/localStorage'
+import React, { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { getCartErrorMessage, saveUserCartItem } from '../firebase/cartApi'
+import {
+  deleteUserWishlistItem,
+  getWishlistErrorMessage,
+  hasUserWishlistItem,
+  saveUserWishlistItem,
+} from '../firebase/wishlistApi'
+import useAuthStore from '../store/authStore'
 import Modal from './Modal'
 import styles from './ProductCard.module.scss'
 
 const ProductCard = ({ product, onWishItem }) => {
-  const [isLiked, setIsLiked] = useState(() => (
-    loadlocal('wishlist', []).some((item) => String(item.id) === String(product.id))
-  ))
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const [isLiked, setIsLiked] = useState(false)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-  const discountPrice = Math.round(product.price * (1 - product.discountRate / 100))
+  const discountPrice = Math.round(product.price * (1 - (product.discountRate || 0) / 100))
+  const isSoldOut = product.stock === 0
 
-  const changeWishlist = () => {
-    const wishlist = loadlocal('wishlist', [])
+  useEffect(() => {
+    let isMounted = true
+
+    if (!user) {
+      setIsLiked(false)
+      return undefined
+    }
+
+    hasUserWishlistItem({ uid: user.uid, productId: product.id })
+      .then((isSaved) => {
+        if (isMounted) setIsLiked(isSaved)
+      })
+      .catch(() => {
+        if (isMounted) setIsLiked(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [product.id, user])
+
+  const changeWishlist = async () => {
+    if (!user) {
+      navigate('/login', { state: { from: '/wishlist' } })
+      return
+    }
+
     const nextLiked = !isLiked
-    const wishlistWithoutProduct = wishlist.filter(
-      (item) => String(item.id) !== String(product.id),
-    )
-    const updatedWishlist = nextLiked
-      ? [...wishlistWithoutProduct, product]
-      : wishlistWithoutProduct
 
-    savelocal('wishlist', updatedWishlist)
-    setIsLiked(nextLiked)
-    onWishItem?.(product.id, nextLiked)
+    try {
+      if (nextLiked) {
+        await saveUserWishlistItem({ uid: user.uid, product })
+      } else {
+        await deleteUserWishlistItem({ uid: user.uid, itemId: String(product.id) })
+      }
+
+      setIsLiked(nextLiked)
+      onWishItem?.(product.id, nextLiked)
+    } catch (error) {
+      window.alert(getWishlistErrorMessage(error))
+    }
   }
 
-  const addToCart = () => {
-    const cart = loadlocal('cart', [])
-    const existingItem = cart.find((item) => String(item.id) === String(product.id))
-    const updatedCart = existingItem
-      ? cart.map((item) => (
-          String(item.id) === String(product.id)
-            ? { ...item, quantity: (item.quantity || 0) + 1 }
-            : item
-        ))
-      : [...cart, { ...product, price: discountPrice, quantity: 1 }]
+  const addToCart = async () => {
+    if (isSoldOut) {
+      window.alert('품절된 상품은 장바구니에 담을 수 없습니다.')
+      return
+    }
 
-    savelocal('cart', updatedCart)
-    window.dispatchEvent(new Event('cart-updated'))
-    setIsConfirmOpen(true)
+    if (!user) {
+      navigate('/login', { state: { from: `/products/${product.id}` } })
+      return
+    }
+
+    try {
+      await saveUserCartItem({ uid: user.uid, product })
+      setIsConfirmOpen(true)
+    } catch (error) {
+      window.alert(getCartErrorMessage(error))
+    }
   }
 
   return (
     <article className={styles.card}>
       <div className={styles.visual} data-color={product.color}>
         {product.badge && <span className={styles.badge}>{product.badge}</span>}
+        {isSoldOut && <span className={styles.soldOutBadge}>품절</span>}
         {product.image
           ? <img className={styles.productImage} src={product.image} alt={product.name} />
           : <span className={styles.productIcon} aria-hidden='true'>{product.icon}</span>}
@@ -71,12 +111,10 @@ const ProductCard = ({ product, onWishItem }) => {
       <div className={styles.info}>
         <p className={styles.brand}>{product.brand}</p>
         <Link className={styles.name} to={`/products/${product.id}`}>{product.name}</Link>
-        {(product.rating || product.reviews) && (
-          <div className={styles.meta}>
-            {product.rating && <span>★ {product.rating}</span>}
-            {product.reviews && <span>리뷰 {product.reviews}</span>}
-          </div>
-        )}
+        <div className={styles.meta}>
+          {product.rating && <span>★ {product.rating}</span>}
+          {product.reviews && <span>리뷰 {product.reviews}</span>}
+        </div>
         <div className={styles.priceRow}>
           {product.discountRate > 0 && <span>{product.discountRate}%</span>}
           <strong className={styles.price}>{discountPrice.toLocaleString('ko-KR')}원</strong>
@@ -86,8 +124,9 @@ const ProductCard = ({ product, onWishItem }) => {
           className={styles.cartButton}
           type='button'
           onClick={addToCart}
+          disabled={isSoldOut}
         >
-          장바구니 담기
+          {isSoldOut ? '품절' : '장바구니 담기'}
         </button>
       </div>
       <Modal

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import ProductList from '../components/ProductList'
 import ProductSort from '../components/ProductSort'
 import SearchBox from '../components/SearchBox'
+import { getProducts } from '../firebase/productApi'
 import styles from './SearchResult.module.scss'
 
 const SearchResult = () => {
@@ -15,19 +16,24 @@ const SearchResult = () => {
   useEffect(() => {
     const searchProducts = async () => {
       setIsLoading(true)
-      const response = await fetch('/data/products.json')
-      const productData = await response.json()
-      const normalizedKeyword = decodedKeyword.toLowerCase()
 
-      const results = productData.filter((item) => (
-        item.name.toLowerCase().includes(normalizedKeyword)
-        || item.category.toLowerCase().includes(normalizedKeyword)
-        || item.brand?.toLowerCase().includes(normalizedKeyword)
-      ))
+      try {
+        const productData = await getProducts()
+        const normalizedKeyword = decodedKeyword.toLowerCase()
 
-      setSearchResult(results)
-      setSort('recommended')
-      setIsLoading(false)
+        const results = productData.filter((item) => (
+          item.name.toLowerCase().includes(normalizedKeyword)
+          || item.category.toLowerCase().includes(normalizedKeyword)
+          || item.brand?.toLowerCase().includes(normalizedKeyword)
+        ))
+
+        setSearchResult(results)
+        setSort('recommended')
+      } catch {
+        setSearchResult([])
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     searchProducts()
