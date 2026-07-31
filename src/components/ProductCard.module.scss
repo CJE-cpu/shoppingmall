@@ -8,12 +8,13 @@
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 8px 24px rgba(55, 43, 35, 0.05);
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  transition: box-shadow 220ms ease, border-color 220ms ease;
 }
 .card:hover {
-  border-color: #ddd2ca;
-  box-shadow: 0 16px 38px rgba(55, 43, 35, 0.1);
-  transform: translateY(-3px);
+  border-color: rgba(233, 82, 57, 0.45);
+  box-shadow:
+    0 16px 38px rgba(55, 43, 35, 0.1),
+    0 0 0 3px rgba(233, 82, 57, 0.06);
 }
 .visual {
   position: relative;
@@ -74,7 +75,7 @@
   transition: transform 220ms ease;
 }
 .visual:hover .productIcon {
-  transform: translateY(-5px) scale(1.04);
+  transform: rotate(-2deg) scale(1.06);
 }
 .visual:hover .productImage {
   transform: scale(1.055);
@@ -207,16 +208,17 @@
     color 180ms ease,
     background 180ms ease,
     border-color 180ms ease,
+    box-shadow 180ms ease,
     transform 180ms ease;
 }
 .cartButton:hover {
   border-color: #e04b2a;
   background: #e04b2a;
   color: #fff;
-  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(224, 75, 42, 0.2);
 }
 .cartButton:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 .cartButton:disabled {
   border-color: #c9c3bd;

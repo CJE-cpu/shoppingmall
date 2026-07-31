@@ -47,11 +47,11 @@
     background: #252821;
     font-size: 15px;
     font-weight: 800;
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
 
     &:hover:not(:disabled) {
       background: #df4b2d;
-      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(224, 75, 42, 0.2);
     }
 
     &:disabled {
