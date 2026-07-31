@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import Pagination from '../components/Pagination'
 import ProductFilter from '../components/ProductFilter'
 import ProductList from '../components/ProductList'
 import ProductSort from '../components/ProductSort'
@@ -7,13 +8,17 @@ import { getProducts } from '../firebase/productApi'
 import { useCategories } from '../hooks/useProducts'
 import styles from './Products.module.scss'
 
+const PRODUCTS_PER_PAGE = 12
+
 const Products = () => {
   const { category } = useParams()
   const { categories } = useCategories()
+  const productSectionRef = useRef(null)
   const [products, setProducts] = useState([])
   const [brands, setBrands] = useState([])
   const [priceRange, setPriceRange] = useState('all')
   const [sort, setSort] = useState('recommended')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -59,6 +64,25 @@ const Products = () => {
     })
   }, [brands, category, priceRange, products, sort])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [brands, category, priceRange, sort])
+
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
+  const pageStart = (currentPage - 1) * PRODUCTS_PER_PAGE
+  const visibleProducts = filteredProducts.slice(
+    pageStart,
+    pageStart + PRODUCTS_PER_PAGE,
+  )
+
+  const changePage = (page) => {
+    setCurrentPage(page)
+    productSectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   const resetFilters = () => {
     setBrands([])
     setPriceRange('all')
@@ -84,9 +108,16 @@ const Products = () => {
           />
         </aside>
 
-        <section className={styles.products} aria-label={`${pageTitle} 상품 목록`}>
+        <section ref={productSectionRef} className={styles.products} aria-label={`${pageTitle} 상품 목록`}>
           <ProductSort count={filteredProducts.length} value={sort} onChange={setSort} hasRatings={hasRatings} />
-          <ProductList products={filteredProducts} />
+          <ProductList products={visibleProducts} />
+          {totalPages > 1 && (
+            <Pagination
+              current={currentPage}
+              total={totalPages}
+              onChange={changePage}
+            />
+          )}
         </section>
       </div>
     </main>
