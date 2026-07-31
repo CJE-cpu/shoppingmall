@@ -38,7 +38,7 @@ const Header = () => {
     <header className={styles.header}>
       <div className={styles.topBar}>
         <Link className={styles.logo} to='/' aria-label='Drive Market 홈'>
-          <img src='../public/img/logo/drive-market-logo-primary.png' className={styles.logoMark} alt=''/>
+          <img src='/img/logo/drive-market-logo-primary.png' className={styles.logoMark} alt=''/>
         </Link>
         <SearchBox />
         <nav className={styles.utilityNav} aria-label='사용자 메뉴'>
