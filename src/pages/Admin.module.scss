@@ -438,6 +438,11 @@
 }
 
 .adminProductList {
+  max-height: min(620px, 70vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+
   article {
     display: grid;
     grid-template-columns: 90px minmax(0, 1fr) 120px max-content;
@@ -445,6 +450,10 @@
     align-items: center;
     padding: 18px 28px;
     border-bottom: 1px solid #eee9e5;
+  }
+
+  article:last-child {
+    border-bottom: 0;
   }
 }
 
@@ -738,6 +747,10 @@
 
   .adminProductList article {
     grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .adminProductList {
+    max-height: 520px;
   }
 
   .adminProductImage {
