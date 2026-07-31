@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   createAdminProduct,
   deleteAdminProduct,
@@ -26,6 +26,7 @@ const LOW_STOCK_THRESHOLD = 5
 const MAX_RECOMMENDED_PRODUCTS = 4
 
 const AdminProducts = () => {
+  const productFormPanelRef = useRef(null)
   const [products, setProducts] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState('')
@@ -89,7 +90,10 @@ const AdminProducts = () => {
     })
     setErrorMessage('')
     setSuccessMessage('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    productFormPanelRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
   }
 
   const submitProduct = async (event) => {
@@ -237,7 +241,7 @@ const AdminProducts = () => {
 
   return (
     <div className={styles.productManagement}>
-      <section className={styles.productFormPanel}>
+      <section ref={productFormPanelRef} className={styles.productFormPanel}>
         <div className={styles.managementHeading}>
           <div>
             <span>PRODUCT FORM</span>
