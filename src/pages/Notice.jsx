@@ -5,12 +5,19 @@ import {
   getNoticeErrorMessage,
   getNotices,
 } from '../firebase/noticeApi'
+import Pagination from '../components/Pagination'
 import styles from './Notice.module.scss'
+
+const NOTICES_PER_PAGE = 10
 
 const Notice = () => {
   const [notices, setNotices] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const totalPages = Math.ceil(notices.length / NOTICES_PER_PAGE)
+  const pageStart = (currentPage - 1) * NOTICES_PER_PAGE
+  const visibleNotices = notices.slice(pageStart, pageStart + NOTICES_PER_PAGE)
 
   useEffect(() => {
     let isMounted = true
@@ -53,15 +60,24 @@ const Notice = () => {
         ) : notices.length === 0 ? (
           <p className={styles.state}>등록된 공지사항이 없습니다.</p>
         ) : (
-          <ol className={styles.noticeList}>
-            {notices.map((notice, index) => (
-              <li key={notice.id}>
-                <span>{notices.length - index}</span>
-                <Link to={`/notice/${notice.id}`}>{notice.title}</Link>
-                <time>{formatNoticeDate(notice.createAt)}</time>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol className={styles.noticeList}>
+              {visibleNotices.map((notice, index) => (
+                <li key={notice.id}>
+                  <span>{notices.length - pageStart - index}</span>
+                  <Link to={`/notice/${notice.id}`}>{notice.title}</Link>
+                  <time>{formatNoticeDate(notice.createAt)}</time>
+                </li>
+              ))}
+            </ol>
+            {totalPages > 1 && (
+              <Pagination
+                current={currentPage}
+                total={totalPages}
+                onChange={setCurrentPage}
+              />
+            )}
+          </>
         )}
       </section>
     </main>
