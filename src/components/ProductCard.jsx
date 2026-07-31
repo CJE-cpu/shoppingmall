@@ -94,7 +94,15 @@ const ProductCard = ({ product, onWishItem }) => {
         {product.badge && <span className={styles.badge}>{product.badge}</span>}
         {isSoldOut && <span className={styles.soldOutBadge}>품절</span>}
         {product.image
-          ? <img className={styles.productImage} src={product.image} alt={product.name} />
+          ? (
+            <img
+              className={styles.productImage}
+              src={product.image}
+              alt={product.name}
+              loading='lazy'
+              decoding='async'
+            />
+          )
           : <span className={styles.productIcon} aria-hidden='true'>{product.icon}</span>}
         <Link
           className={styles.visualLink}

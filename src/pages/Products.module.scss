@@ -38,6 +38,29 @@
 .products {
   min-width: 0;
 }
+.state {
+  display: grid;
+  min-height: 320px;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  color: #756d67;
+  text-align: center;
+}
+.error {
+  color: #a83b2b;
+
+  button {
+    padding: 11px 20px;
+    background: #2c2723;
+    color: #fff;
+    font-weight: 700;
+
+    &:hover {
+      background: #e95239;
+    }
+  }
+}
 @media (max-width: 800px) {
   .hero {
     padding: 38px 20px 34px;

@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Pagination from '../components/Pagination'
 import ProductFilter from '../components/ProductFilter'
 import ProductList from '../components/ProductList'
 import ProductSort from '../components/ProductSort'
-import { getProducts } from '../firebase/productApi'
+import { getProductErrorMessage, getProducts } from '../firebase/productApi'
 import { useCategories } from '../hooks/useProducts'
 import styles from './Products.module.scss'
 
@@ -19,18 +19,26 @@ const Products = () => {
   const [priceRange, setPriceRange] = useState('all')
   const [sort, setSort] = useState('recommended')
   const [currentPage, setCurrentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const loadProducts = useCallback(async () => {
+    setIsLoading(true)
+    setErrorMessage('')
+
+    try {
+      setProducts(await getProducts())
+    } catch (error) {
+      setProducts([])
+      setErrorMessage(getProductErrorMessage(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        setProducts(await getProducts())
-      } catch {
-        setProducts([])
-      }
-    }
-
     loadProducts()
-  }, [])
+  }, [loadProducts])
 
   useEffect(() => {
     setBrands([])
@@ -110,13 +118,24 @@ const Products = () => {
 
         <section ref={productSectionRef} className={styles.products} aria-label={`${pageTitle} 상품 목록`}>
           <ProductSort count={filteredProducts.length} value={sort} onChange={setSort} hasRatings={hasRatings} />
-          <ProductList products={visibleProducts} />
-          {totalPages > 1 && (
-            <Pagination
-              current={currentPage}
-              total={totalPages}
-              onChange={changePage}
-            />
+          {isLoading ? (
+            <p className={styles.state} role='status'>상품을 불러오는 중입니다...</p>
+          ) : errorMessage ? (
+            <div className={`${styles.state} ${styles.error}`} role='alert'>
+              <p>{errorMessage}</p>
+              <button type='button' onClick={loadProducts}>다시 시도</button>
+            </div>
+          ) : (
+            <>
+              <ProductList products={visibleProducts} />
+              {totalPages > 1 && (
+                <Pagination
+                  current={currentPage}
+                  total={totalPages}
+                  onChange={changePage}
+                />
+              )}
+            </>
           )}
         </section>
       </div>

@@ -26,12 +26,6 @@ const ADMIN_MENUS = [
     description: '상품 정보와 판매 가능한 재고를 관리합니다.',
   },
   {
-    id: 'recommendations',
-    label: '추천상품 관리',
-    path: '/admin/products',
-    description: '메인 화면에 노출할 추천상품을 관리합니다.',
-  },
-  {
     id: 'notices',
     label: '공지사항 관리',
     path: '/admin/notices',

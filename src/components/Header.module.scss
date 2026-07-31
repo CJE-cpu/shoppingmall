@@ -28,7 +28,7 @@
 .logoMark {
   width: 100%;
   height: 100%;
-  object-fit: cover; 
+  object-fit: contain;
 }
 
 .utilityNav,
@@ -173,12 +173,13 @@
   }
 
   .logo {
-    font-size: 18px;
+    width: 170px;
+    height: 52px;
   }
 
   .logoMark {
-    width: 34px;
-    height: 34px;
+    width: 100%;
+    height: 100%;
   }
 
   .utilityNav {
